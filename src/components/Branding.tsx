@@ -3,7 +3,7 @@ import { CheckCircle, Lock, Scale } from 'lucide-react';
 // Branding section highlighting brand values
 const Branding = () => (
   // Force full-viewport width even if parent is constrained
-  <div className="w-screen bg-[#f8f8f8] py-16 px-6 relative left-1/2 right-1/2 -mx-[50vw] ml-[-50vw]">
+  <div id="features" className="w-screen bg-[#f8f8f8] py-16 px-6 relative left-1/2 right-1/2 -mx-[50vw] ml-[-50vw]">
     <section>
       {/* Section Title */}
       <h2 className="text-3xl font-extrabold text-analenn-primary text-center mb-12">

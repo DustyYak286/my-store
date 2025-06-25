@@ -1,11 +1,14 @@
 'use client';
 
 import Image from 'next/image';
+import { useCart } from '@/context/CartContext';
 
 const Hero = () => {
+  const { addToCart } = useCart();
+
   return (
     // Hero section that accounts for navbar height (4rem = 64px) and centers content with slight upward shift
-    <section className="bg-white min-h-[calc(100vh-4rem)] flex flex-col justify-center px-6 lg:px-20">
+    <section id="hero" className="bg-white min-h-[calc(100vh-4rem)] flex flex-col justify-center px-6 lg:px-20 mb-0 -mb-20">
       {/* Main content container with upward shift (-mt-10) and responsive gap */}
       <div className="flex flex-col lg:flex-row items-center justify-center gap-10 -mt-10">
         {/* Left: Text Content */}
@@ -20,7 +23,7 @@ const Hero = () => {
           </p>
           {/* Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 w-full">
-            <button className="bg-analenn-primary text-white font-semibold py-3 px-8 rounded-lg shadow-sm hover:bg-analenn-secondary transition text-base flex items-center justify-center">
+            <button className="bg-analenn-primary text-white font-semibold py-3 px-8 rounded-lg shadow-sm hover:bg-analenn-secondary transition text-base flex items-center justify-center" onClick={() => addToCart(1)}>
               + Add to Cart
             </button>
             <button className="border-2 border-analenn-primary text-analenn-primary font-semibold py-3 px-8 rounded-lg shadow-sm hover:bg-analenn-primary hover:text-white transition text-base flex items-center justify-center">

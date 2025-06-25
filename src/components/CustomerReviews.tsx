@@ -52,7 +52,7 @@ function ReviewCard({ title, text, reviewer, avatar, role }: typeof reviews[0]) 
 }
 
 const CustomerReviews = () => (
-  <section className="bg-white py-16 px-6">
+  <section id="reviews" className="bg-white py-16 px-6">
     <h2 className="text-3xl font-bold text-analenn-primary text-center mb-12">Customer Reviews</h2>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
       {reviews.map((review, idx) => (

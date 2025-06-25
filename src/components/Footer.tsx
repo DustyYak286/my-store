@@ -10,10 +10,10 @@ const footerLinks = [
   {
     heading: 'Shop',
     items: [
-      { label: 'Capybara', href: '#' },
-      { label: 'Product Details', href: '#' },
-      { label: 'Features', href: '#' },
-      { label: 'Reviews', href: '#' },
+      { label: 'Capybara', href: '#hero' },
+      { label: 'Product Details', href: '#product' },
+      { label: 'Features', href: '#features' },
+      { label: 'Reviews', href: '#reviews' },
     ],
   },
   {

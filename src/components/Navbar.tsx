@@ -3,11 +3,14 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ShoppingCart } from 'lucide-react';
-
-// Example: cart count could come from props or context
-const cartCount = 1;
+import { useState } from 'react';
+import CartModal from './CartModal';
+import { useCart } from '@/context/CartContext';
 
 const Navbar = () => {
+  const [cartOpen, setCartOpen] = useState(false);
+  const { cartCount } = useCart();
+
   return (
     <nav className="w-full bg-analenn-primary px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -26,32 +29,39 @@ const Navbar = () => {
 
         {/* Right: Navigation Links and Cart */}
         <div className="flex items-center gap-8">
-          <Link
-            href="/product"
+          <a
+            href="#product"
             className="text-white text-lg font-medium transition hover:underline hover:decoration-2 hover:decoration-analenn-accent"
           >
             Product
-          </Link>
-          <Link
+          </a>
+          <a
             href="#features"
             className="text-white text-lg font-medium transition hover:underline hover:decoration-2 hover:decoration-analenn-accent"
           >
             Features
-          </Link>
-          <Link
+          </a>
+          <a
             href="#reviews"
             className="text-white text-lg font-medium transition hover:underline hover:decoration-2 hover:decoration-analenn-accent"
           >
             Reviews
-          </Link>
-          <Link href="/cart" className="relative ml-4">
+          </a>
+          <button
+            onClick={() => setCartOpen(true)}
+            className="relative ml-4 focus:outline-none"
+            aria-label="Open cart"
+          >
             <ShoppingCart className="w-7 h-7 text-white" />
-            <span className="absolute -top-2 -right-2 bg-analenn-accent text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] flex items-center justify-center">
-              {cartCount}
-            </span>
-          </Link>
+            {cartCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-analenn-accent text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] flex items-center justify-center">
+                {cartCount}
+              </span>
+            )}
+          </button>
         </div>
       </div>
+      <CartModal open={cartOpen} onClose={() => setCartOpen(false)} />
     </nav>
   );
 };

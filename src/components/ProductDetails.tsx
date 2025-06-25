@@ -2,11 +2,16 @@
 
 import Image from 'next/image';
 import { Star } from 'lucide-react';
+import { useState } from 'react';
+import { useCart } from '@/context/CartContext';
 
 const ProductDetails = () => {
+  const [quantity, setQuantity] = useState(1);
+  const { addToCart } = useCart();
+
   return (
     // The heading is now outside and above the two-column layout for proper centering
-    <section className="bg-white py-16 px-6 max-w-6xl mx-auto rounded-2xl shadow-sm">
+    <section id="product" className="bg-white py-16 px-6 max-w-6xl mx-auto rounded-2xl shadow-sm">
       {/* Centered Section Title above the product content */}
       <h2 className="text-3xl font-extrabold text-analenn-primary text-center mb-12">Product Details</h2>
       {/* Two-column responsive layout for product image and info */}
@@ -47,14 +52,27 @@ const ProductDetails = () => {
           <div className="flex flex-col gap-2 w-full max-w-xs">
             <label className="text-analenn-primary font-semibold mb-1">Quantity</label>
             <div className="flex items-center gap-2">
-              <button className="bg-gray-100 text-analenn-primary px-3 py-1 rounded-md text-lg font-bold">-</button>
-              <span className="px-4 py-1 border rounded-md bg-white text-analenn-primary">1</span>
-              <button className="bg-gray-100 text-analenn-primary px-3 py-1 rounded-md text-lg font-bold">+</button>
+              <button
+                className="bg-gray-100 text-analenn-primary px-3 py-1 rounded-md text-lg font-bold"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+              >
+                -
+              </button>
+              <span className="px-4 py-1 border rounded-md bg-white text-analenn-primary">{quantity}</span>
+              <button
+                className="bg-gray-100 text-analenn-primary px-3 py-1 rounded-md text-lg font-bold"
+                onClick={() => setQuantity((q) => q + 1)}
+              >
+                +
+              </button>
             </div>
           </div>
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 w-full max-w-xs mt-2">
-            <button className="bg-analenn-primary text-white font-semibold py-3 px-8 rounded-lg shadow-sm hover:bg-analenn-secondary transition text-base flex items-center justify-center w-full">
+            <button
+              className="bg-analenn-primary text-white font-semibold py-3 px-8 rounded-lg shadow-sm hover:bg-analenn-secondary transition text-base flex items-center justify-center w-full"
+              onClick={() => addToCart(quantity)}
+            >
               + Add to Cart
             </button>
             <button className="border-2 border-analenn-primary text-analenn-primary font-semibold py-3 px-8 rounded-lg shadow-sm hover:bg-analenn-primary hover:text-white transition text-base flex items-center justify-center w-full">
