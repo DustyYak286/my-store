@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  scroll-behavior: smooth;
+  scroll-snap-type: y proximity;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -19,3 +24,24 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+#features {
+  position: relative;
+  scroll-snap-align: center;
+  z-index: 1;
+}
+
+#features::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  right: 50%;
+  height: 100%;
+  background: #f8f8f8;
+  z-index: -1;
+  width: 100vw;
+  transform: translateX(-50%) scaleX(2);
+}
+
+
