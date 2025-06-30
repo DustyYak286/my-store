@@ -2,7 +2,7 @@ import { CheckCircle, Lock, Scale } from 'lucide-react';
 
 // Branding section highlighting brand values
 const Branding = () => (
-  <div id="features" className="relative">
+  <div id="features" className="relative bg-[#f8f8f8]">
     <div className="max-w-7xl mx-auto py-16 px-6">
       <section>
         {/* Section Title */}

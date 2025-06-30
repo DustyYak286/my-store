@@ -23,12 +23,12 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
 }
 
 #features {
   position: relative;
   scroll-snap-align: center;
-  z-index: 1;
 }
 
 #features::before {
@@ -36,12 +36,11 @@ body {
   position: absolute;
   top: 0;
   left: 50%;
-  right: 50%;
+  transform: translateX(-50%);
+  width: 100vw;
   height: 100%;
   background: #f8f8f8;
   z-index: -1;
-  width: 100vw;
-  transform: translateX(-50%) scaleX(2);
 }
 
 
