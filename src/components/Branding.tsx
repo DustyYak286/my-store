@@ -1,4 +1,4 @@
-import { CheckCircle, Lock, Scale } from 'lucide-react';
+import { CheckCircle, Lock, Scale } from "lucide-react";
 
 // Branding section highlighting brand values
 const Branding = () => (
@@ -17,9 +17,12 @@ const Branding = () => (
             <span className="bg-gray-100 rounded-full p-4 mb-4 flex items-center justify-center">
               <CheckCircle className="w-8 h-8 text-analenn-primary" />
             </span>
-            <h3 className="text-lg font-semibold text-analenn-primary mb-2">Premium Quality</h3>
+            <h3 className="text-lg font-semibold text-analenn-primary mb-2">
+              Premium Quality
+            </h3>
             <p className="text-sm text-gray-700 leading-relaxed">
-              Made with the softest eco-friendly materials for maximum cuddliness and durability.
+              Made with the softest eco-friendly materials for maximum
+              cuddliness and durability.
             </p>
           </div>
           {/* Child Safe Card */}
@@ -27,9 +30,12 @@ const Branding = () => (
             <span className="bg-gray-100 rounded-full p-4 mb-4 flex items-center justify-center">
               <Lock className="w-8 h-8 text-analenn-primary" />
             </span>
-            <h3 className="text-lg font-semibold text-analenn-primary mb-2">Child Safe</h3>
+            <h3 className="text-lg font-semibold text-analenn-primary mb-2">
+              Child Safe
+            </h3>
             <p className="text-sm text-gray-700 leading-relaxed">
-              Hypoallergenic filling and secure stitching make Cappy safe for all ages.
+              Hypoallergenic filling and secure stitching make Cappy safe for
+              all ages.
             </p>
           </div>
           {/* Ethically Made Card */}
@@ -37,9 +43,12 @@ const Branding = () => (
             <span className="bg-gray-100 rounded-full p-4 mb-4 flex items-center justify-center">
               <Scale className="w-8 h-8 text-analenn-primary" />
             </span>
-            <h3 className="text-lg font-semibold text-analenn-primary mb-2">Ethically Made</h3>
+            <h3 className="text-lg font-semibold text-analenn-primary mb-2">
+              Ethically Made
+            </h3>
             <p className="text-sm text-gray-700 leading-relaxed">
-              Produced in fair-trade certified facilities with sustainable practices.
+              Produced in fair-trade certified facilities with sustainable
+              practices.
             </p>
           </div>
         </div>
@@ -48,4 +57,4 @@ const Branding = () => (
   </div>
 );
 
-export default Branding; 
+export default Branding;

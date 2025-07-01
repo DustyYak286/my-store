@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { ShoppingCart } from 'lucide-react';
-import Image from 'next/image';
-import { STORE_NAME } from '@/constants/store';
+import Link from "next/link";
+import { ShoppingCart } from "lucide-react";
+import Image from "next/image";
+import { STORE_NAME } from "@/constants/store";
 
 const Navbar = () => {
   return (
@@ -12,20 +12,27 @@ const Navbar = () => {
         <div className="flex justify-between h-16 items-center">
           {/* Logo/Brand */}
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/analenn-logo.png" alt="Analenn Logo" width={48} height={48} />
-            <span className="text-2xl font-bold text-analenn-primary tracking-wide">{STORE_NAME}</span>
+            <Image
+              src="/images/analenn-logo.png"
+              alt="Analenn Logo"
+              width={48}
+              height={48}
+            />
+            <span className="text-2xl font-bold text-analenn-primary tracking-wide">
+              {STORE_NAME}
+            </span>
           </Link>
 
           {/* Navigation Links */}
           <div className="hidden sm:flex sm:space-x-8">
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="text-analenn-secondary hover:text-analenn-primary px-3 py-2 rounded-md text-sm font-medium"
             >
               Home
             </Link>
-            <Link 
-              href="/product" 
+            <Link
+              href="/product"
               className="text-analenn-secondary hover:text-analenn-primary px-3 py-2 rounded-md text-sm font-medium"
             >
               Product
@@ -33,8 +40,8 @@ const Navbar = () => {
           </div>
 
           {/* Cart Icon */}
-          <Link 
-            href="/cart" 
+          <Link
+            href="/cart"
             className="relative p-2 text-analenn-secondary hover:text-analenn-primary"
           >
             <ShoppingCart className="h-6 w-6" />
@@ -48,4 +55,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar; 
+export default Navbar;

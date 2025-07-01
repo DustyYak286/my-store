@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import Image from 'next/image';
-import { ShoppingCart } from 'lucide-react';
-import { useState } from 'react';
-import CartModal from './CartModal';
-import { useCart } from '@/context/CartContext';
+import Link from "next/link";
+import Image from "next/image";
+import { ShoppingCart } from "lucide-react";
+import { useState } from "react";
+import CartModal from "./CartModal";
+import { useCart } from "@/context/CartContext";
 
 const Navbar = () => {
   const [cartOpen, setCartOpen] = useState(false);
@@ -17,14 +17,16 @@ const Navbar = () => {
         {/* Left: Logo and Brand Name */}
         <Link href="/" className="flex items-center">
           <Image
-            src="/analenn-logo.png"
+            src="/images/analenn-logo.png"
             alt="Analenn Logo"
             width={48}
             height={48}
             className="w-12 h-12 rounded-lg object-contain mr-3"
             priority
           />
-          <span className="text-2xl font-extrabold text-white tracking-wide">Analenn</span>
+          <span className="text-2xl font-extrabold text-white tracking-wide">
+            Analenn
+          </span>
         </Link>
 
         {/* Right: Navigation Links and Cart */}
@@ -32,6 +34,13 @@ const Navbar = () => {
           <a
             href="#product"
             className="text-white text-lg font-medium transition hover:underline hover:decoration-2 hover:decoration-analenn-accent"
+            onClick={e => {
+              e.preventDefault();
+              const el = document.getElementById('product');
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }}
           >
             Product
           </a>
@@ -66,4 +75,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar; 
+export default Navbar;
