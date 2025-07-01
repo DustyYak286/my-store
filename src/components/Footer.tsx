@@ -1,28 +1,24 @@
 const footerLinks = [
   {
-    heading: 'Analenn',
-    quote: [
-      'Copilul care',
-      'a visat',
-      'gresit',
+    heading: "Analenn",
+    quote: ["Copilul care", "a visat", "gresit"],
+  },
+  {
+    heading: "Shop",
+    items: [
+      { label: "Capybara", href: "#top" },
+      { label: "Product Details", href: "#product" },
+      { label: "Features", href: "#features" },
+      { label: "Reviews", href: "#reviews" },
     ],
   },
   {
-    heading: 'Shop',
+    heading: "Help",
     items: [
-      { label: 'Capybara', href: '#hero' },
-      { label: 'Product Details', href: '#product' },
-      { label: 'Features', href: '#features' },
-      { label: 'Reviews', href: '#reviews' },
-    ],
-  },
-  {
-    heading: 'Help',
-    items: [
-      { label: 'FAQ', href: '#' },
-      { label: 'Terms and Conditions', href: '#' },
-      { label: 'Returns', href: '#' },
-      { label: 'Contact Us', href: '#' },
+      { label: "FAQ", href: "#" },
+      { label: "Terms and Conditions", href: "#" },
+      { label: "Returns", href: "#" },
+      { label: "Contact Us", href: "#" },
     ],
   },
 ];
@@ -31,9 +27,12 @@ const Footer = () => (
   <footer className="w-screen bg-analenn-primary text-[#f4e9ea] py-16 px-6 relative left-1/2 right-1/2 -mx-[50vw] ml-[-50vw] overflow-x-hidden">
     {/* Newsletter Signup */}
     <div className="max-w-3xl mx-auto mb-12">
-      <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-3">Join the Analenn Family</h2>
+      <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-3">
+        Join the Analenn Family
+      </h2>
       <p className="text-[#f4e9ea] text-center max-w-xl mx-auto mb-6">
-        Subscribe to our newsletter for exclusive offers, capybara facts, and new product announcements!
+        Subscribe to our newsletter for exclusive offers, capybara facts, and
+        new product announcements!
       </p>
       <form className="flex justify-center w-full">
         <div className="flex w-full max-w-xl rounded-md bg-white overflow-hidden shadow-sm">
@@ -108,4 +107,4 @@ const Footer = () => (
   </footer>
 );
 
-export default Footer; 
+export default Footer;

@@ -1,30 +1,41 @@
-'use client';
-import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+"use client";
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 const faqs = [
   {
-    question: 'What materials is Cappy made from?',
+    question: "What materials is Cappy made from?",
     answer:
-      'Cappy is made from premium eco-friendly polyester fabric with hypoallergenic polyester filling. All materials are non-toxic and safe for children.',
+      "Cappy is made from premium eco-friendly polyester fabric with hypoallergenic polyester filling. All materials are non-toxic and safe for children.",
   },
   {
-    question: 'Is Cappy machine washable?',
+    question: "Is Cappy machine washable?",
     answer:
-      'Yes! We recommend a gentle cycle with cold water and air drying for best results.',
+      "Yes! We recommend a gentle cycle with cold water and air drying for best results.",
   },
   {
-    question: 'What is your return policy?',
-    answer: 'You can return Cappy within 30 days of delivery. Just make sure it\'s in original condition, and we\'ll issue a full refund.',
+    question: "What is your return policy?",
+    answer:
+      "You can return Cappy within 30 days of delivery. Just make sure it's in original condition, and we'll issue a full refund.",
   },
   {
-    question: 'How long does shipping take?',
+    question: "How long does shipping take?",
     answer:
-      'Shipping usually takes 3–5 business days. Expedited options are also available at checkout.',
+      "Shipping usually takes 3–5 business days. Expedited options are also available at checkout.",
   },
 ];
 
-function FAQItem({ question, answer, open, onClick }: { question: string; answer: string; open: boolean; onClick: () => void }) {
+function FAQItem({
+  question,
+  answer,
+  open,
+  onClick,
+}: {
+  question: string;
+  answer: string;
+  open: boolean;
+  onClick: () => void;
+}) {
   return (
     <div className="rounded-xl bg-white shadow-sm overflow-hidden">
       <button
@@ -32,15 +43,17 @@ function FAQItem({ question, answer, open, onClick }: { question: string; answer
         onClick={onClick}
         aria-expanded={open}
       >
-        <span className="font-semibold text-analenn-primary text-base md:text-lg">{question}</span>
+        <span className="font-semibold text-analenn-primary text-base md:text-lg">
+          {question}
+        </span>
         <ChevronDown
-          className={`w-6 h-6 text-analenn-primary transform transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
+          className={`w-6 h-6 text-analenn-primary transform transition-transform duration-300 ${open ? "rotate-180" : ""}`}
         />
       </button>
       <div
-        className={`px-4 pb-4 text-gray-700 text-sm transition-all duration-300 ease-in-out ${open ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}
+        className={`px-4 pb-4 text-gray-700 text-sm transition-all duration-300 ease-in-out ${open ? "max-h-40 opacity-100" : "max-h-0 opacity-0"} overflow-hidden`}
         style={{
-          transitionProperty: 'max-height, opacity',
+          transitionProperty: "max-height, opacity",
         }}
       >
         {open && <div>{answer}</div>}
@@ -55,7 +68,9 @@ const FAQ = () => {
   return (
     <div className="w-screen bg-[#f8f8f8] py-16 px-6 relative left-1/2 right-1/2 -mx-[50vw] ml-[-50vw]">
       <section>
-        <h2 className="text-3xl font-bold text-analenn-primary text-center mb-12">Frequently Asked Questions</h2>
+        <h2 className="text-3xl font-bold text-analenn-primary text-center mb-12">
+          Frequently Asked Questions
+        </h2>
         <div className="max-w-4xl mx-auto flex flex-col space-y-4">
           {faqs.map((faq, idx) => (
             <FAQItem
@@ -72,4 +87,4 @@ const FAQ = () => {
   );
 };
 
-export default FAQ; 
+export default FAQ;

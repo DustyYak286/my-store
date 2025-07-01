@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ShoppingCart, X } from 'lucide-react';
+import { useState } from "react";
+import { ShoppingCart, X } from "lucide-react";
 
 interface CartModalProps {
   open: boolean;
@@ -26,7 +26,9 @@ const CartModal = ({ open, onClose }: CartModalProps) => {
         {/* Cart icon */}
         <div className="flex flex-col items-center justify-center my-8">
           <ShoppingCart size={64} className="text-[#bfa6ad] mb-4" />
-          <div className="text-[#7C4D59] text-md text-center mb-6">Your cart is empty</div>
+          <div className="text-[#7C4D59] text-md text-center mb-6">
+            Your cart is empty
+          </div>
         </div>
         {/* Continue Shopping button */}
         <div className="flex justify-center">
@@ -42,4 +44,4 @@ const CartModal = ({ open, onClose }: CartModalProps) => {
   );
 };
 
-export default CartModal; 
+export default CartModal;
