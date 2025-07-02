@@ -6,6 +6,15 @@ import { useCart } from "@/context/CartContext";
 const Hero = () => {
   const { addToCart } = useCart();
 
+  // Hero product data for Cappy the Capybara
+  const heroProduct = {
+    id: "cappy-capybara",
+    name: "Cappy the Capybara",
+    price: 29.99,
+    image: "/images/capybara.png",
+    quantity: 1 // This will be overridden by the actual quantity passed to addToCart
+  };
+
   return (
     // Hero section that accounts for navbar height (4rem = 64px) and centers content with slight upward shift
     <section
@@ -34,7 +43,7 @@ const Hero = () => {
           <div className="flex flex-col sm:flex-row gap-4 w-full">
             <button
               className="bg-analenn-primary text-white font-semibold py-3 px-8 rounded-lg shadow-sm hover:bg-analenn-secondary transition text-base flex items-center justify-center"
-              onClick={() => addToCart(1)}
+              onClick={() => addToCart(heroProduct, 1)}
             >
               + Add to Cart
             </button>
