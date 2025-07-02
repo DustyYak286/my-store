@@ -31,10 +31,10 @@
   - [x] 3.3 Implement quantity controls (+/- buttons) and a remove button for each item.
   - [x] 3.4 Display the calculated `totalPrice`.
   - [x] 3.5 Add a disabled "Checkout" button and a functional "Continue Shopping" button.
-- [ ] 4.0 Integrate Existing Components with the New Cart Context
+- [x] 4.0 Integrate Existing Components with the New Cart Context
   - [x] 4.1 Update the `addToCart` calls in `Hero.tsx` and `ProductDetails.tsx` to pass the full product object.
   - [x] 4.2 Ensure the `Navbar` cart icon correctly reflects the `cartCount` from the context.
-- [ ] 5.0 Write and Run Tests for Cart Functionality
-  - [ ] 5.1 Write unit tests for all functions in `CartContext`.
-  - [ ] 5.2 Write unit tests for the `CartModal` component to verify it displays items correctly.
-  - [ ] 5.3 Run all tests using `npm test` and ensure they pass.
+- [x] 5.0 Write and Run Tests for Cart Functionality
+  - [x] 5.1 Write unit tests for all functions in `CartContext`.
+  - [x] 5.2 Write unit tests for the `CartModal` component to verify it displays items correctly.
+  - [x] 5.3 Run all tests using `npm test` and ensure they pass.
