@@ -132,6 +132,7 @@ const CartModal = ({ open, onClose }: CartModalProps) => {
             // Buttons for cart with items
             <>
               <button
+                key="checkout-button"
                 disabled
                 className="w-full bg-gray-400 text-white px-6 py-3 rounded-lg font-semibold cursor-not-allowed text-center"
                 title="Checkout functionality coming soon"
@@ -139,6 +140,7 @@ const CartModal = ({ open, onClose }: CartModalProps) => {
                 Checkout (Coming Soon)
               </button>
               <button
+                key="continue-shopping-button"
                 onClick={onClose}
                 className="w-full bg-[#7C4D59] text-white px-6 py-3 rounded-lg font-semibold focus:outline-none hover:bg-[#633a48] transition-colors text-center"
               >
@@ -148,6 +150,7 @@ const CartModal = ({ open, onClose }: CartModalProps) => {
           ) : (
             // Button for empty cart
             <button
+              key="empty-cart-button"
               onClick={onClose}
               className="w-full bg-[#7C4D59] text-white px-6 py-3 rounded-lg font-semibold focus:outline-none hover:bg-[#633a48] transition-colors text-center"
             >
