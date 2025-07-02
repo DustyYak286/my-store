@@ -62,7 +62,7 @@ const CartModal = ({ open, onClose }: CartModalProps) => {
                       {item.name}
                     </h3>
                     <p className="text-[#7C4D59] text-sm">
-                      ${item.price.toFixed(2)}
+                      ${typeof item.price === 'number' ? item.price.toFixed(2) : '0.00'}
                     </p>
                     
                     {/* Quantity Controls */}
@@ -100,7 +100,7 @@ const CartModal = ({ open, onClose }: CartModalProps) => {
                   {/* Item Total */}
                   <div className="text-right">
                     <p className="text-[#7C4D59] font-semibold text-sm">
-                      ${(item.price * item.quantity).toFixed(2)}
+                      ${typeof item.price === 'number' ? (item.price * item.quantity).toFixed(2) : '0.00'}
                     </p>
                   </div>
                 </div>
@@ -112,14 +112,14 @@ const CartModal = ({ open, onClose }: CartModalProps) => {
               {/* Subtotal breakdown */}
               <div className="flex justify-between items-center text-sm text-gray-600 mb-2">
                 <span>Subtotal ({cartCount} items):</span>
-                <span>${totalPrice.toFixed(2)}</span>
+                <span>${typeof totalPrice === 'number' ? totalPrice.toFixed(2) : '0.00'}</span>
               </div>
               
               {/* Total */}
               <div className="flex justify-between items-center border-t border-gray-200 pt-2">
                 <span className="text-[#7C4D59] font-bold text-lg">Total:</span>
                 <span className="text-[#7C4D59] font-bold text-xl">
-                  ${totalPrice.toFixed(2)}
+                  ${typeof totalPrice === 'number' ? totalPrice.toFixed(2) : '0.00'}
                 </span>
               </div>
             </div>

@@ -79,10 +79,20 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
 
   // Calculate total price from items
-  const totalPrice = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+  const totalPrice = cartItems.reduce((total, item) => {
+    const itemPrice = typeof item.price === 'number' ? item.price : 0;
+    const itemQuantity = typeof item.quantity === 'number' ? item.quantity : 0;
+    return total + (itemPrice * itemQuantity);
+  }, 0);
 
   // Add items to cart - adds new item or updates quantity if it already exists
   const addToCart = (item: CartItem, quantity: number) => {
+    // Validate item data
+    if (!item || typeof item.price !== 'number' || item.price < 0) {
+      console.error('Invalid item data:', item);
+      return;
+    }
+    
     setCartItems((prevItems) => {
       // Check if item already exists in cart
       const existingItemIndex = prevItems.findIndex(cartItem => cartItem.id === item.id);
