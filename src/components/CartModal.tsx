@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ShoppingCart, X, Plus, Minus, Trash2 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { formatPrice } from "@/utils/formatPrice";
 
 interface CartModalProps {
   open: boolean;
@@ -62,7 +63,7 @@ const CartModal = ({ open, onClose }: CartModalProps) => {
                       {item.name}
                     </h3>
                     <p className="text-[#7C4D59] text-sm">
-                      ${typeof item.price === 'number' ? item.price.toFixed(2) : '0.00'}
+                      ${formatPrice(item.price)}
                     </p>
                     
                     {/* Quantity Controls */}
@@ -100,7 +101,7 @@ const CartModal = ({ open, onClose }: CartModalProps) => {
                   {/* Item Total */}
                   <div className="text-right">
                     <p className="text-[#7C4D59] font-semibold text-sm">
-                      ${typeof item.price === 'number' ? (item.price * item.quantity).toFixed(2) : '0.00'}
+                      ${formatPrice(item.price * item.quantity)}
                     </p>
                   </div>
                 </div>
@@ -112,14 +113,14 @@ const CartModal = ({ open, onClose }: CartModalProps) => {
               {/* Subtotal breakdown */}
               <div className="flex justify-between items-center text-sm text-gray-600 mb-2">
                 <span>Subtotal ({cartCount} items):</span>
-                <span>${typeof totalPrice === 'number' ? totalPrice.toFixed(2) : '0.00'}</span>
+                <span>${formatPrice(totalPrice)}</span>
               </div>
               
               {/* Total */}
               <div className="flex justify-between items-center border-t border-gray-200 pt-2">
                 <span className="text-[#7C4D59] font-bold text-lg">Total:</span>
                 <span className="text-[#7C4D59] font-bold text-xl">
-                  ${typeof totalPrice === 'number' ? totalPrice.toFixed(2) : '0.00'}
+                  ${formatPrice(totalPrice)}
                 </span>
               </div>
             </div>
