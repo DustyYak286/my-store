@@ -152,7 +152,16 @@ const ProductDetails = ({ productId }) => {
           <div className="flex flex-col sm:flex-row gap-4 w-full max-w-xs mt-2">
             <button
               className="bg-analenn-primary text-white font-semibold py-3 px-8 rounded-lg shadow-sm hover:bg-analenn-secondary transition text-base flex items-center justify-center w-full"
-              onClick={() => addToCart(quantity)}
+              onClick={() => {
+                const cartItem = {
+                  id: product.id,
+                  name: product.name,
+                  price: product.price,
+                  image: product.image,
+                  quantity: quantity
+                };
+                addToCart(cartItem, quantity);
+              }}
             >
               + Add to Cart
             </button>
