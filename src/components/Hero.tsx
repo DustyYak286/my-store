@@ -37,7 +37,7 @@ const Hero = () => {
     const cartItem = {
       id: productData.id,
       name: productData.name,
-      price: productData.price.discount ?? productData.price.original,
+      price: productData.price,
       image: productData.image,
       quantity: 1
     };

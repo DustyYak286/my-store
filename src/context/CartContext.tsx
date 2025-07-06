@@ -1,11 +1,18 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
+// Define the price structure
+interface Price {
+  original: number;
+  discount?: number;
+  currency: string;
+}
+
 // Define the CartItem type
 interface CartItem {
   id: string;
   name: string;
-  price: number;
+  price: Price;
   image: string;
   quantity: number;
 }
@@ -78,9 +85,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   // Calculate cart count from items
   const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
 
-  // Calculate total price from items
+  // Calculate total price from items (using discounted price)
   const totalPrice = cartItems.reduce((total, item) => {
-    const itemPrice = typeof item.price === 'number' ? item.price : 0;
+    const itemPrice = item.price.discount ?? item.price.original;
     const itemQuantity = typeof item.quantity === 'number' ? item.quantity : 0;
     return total + (itemPrice * itemQuantity);
   }, 0);
@@ -88,7 +95,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   // Add items to cart - adds new item or updates quantity if it already exists
   const addToCart = (item: CartItem, quantity: number) => {
     // Validate item data
-    if (!item || typeof item.price !== 'number' || item.price < 0) {
+    if (!item || !item.price || typeof item.price.original !== 'number' || item.price.original < 0) {
       console.error('Invalid item data:', item);
       return;
     }

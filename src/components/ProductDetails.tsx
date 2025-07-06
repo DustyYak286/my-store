@@ -156,7 +156,7 @@ const ProductDetails = ({ productId }) => {
                 const cartItem = {
                   id: product.id,
                   name: product.name,
-                  price: product.price.discount ?? product.price.original,
+                  price: product.price,
                   image: product.image,
                   quantity: quantity
                 };

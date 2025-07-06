@@ -27,7 +27,11 @@ const TestComponent = () => {
   const testProduct = {
     id: 'test-product',
     name: 'Test Product',
-    price: 10.99,
+    price: {
+      original: 14.99,
+      discount: 10.99,
+      currency: 'USD'
+    },
     image: '/test-image.jpg',
     quantity: 1
   };
@@ -68,7 +72,7 @@ const TestComponent = () => {
 
       {cartItems.map(item => (
         <div key={item.id} data-testid={`item-${item.id}`}>
-          {item.name} - ${item.price} x {item.quantity}
+          {item.name} - ${item.price.discount ?? item.price.original} x {item.quantity}
         </div>
       ))}
     </div>
@@ -105,7 +109,10 @@ describe('CartContext', () => {
           {
             id: 'stored-product',
             name: 'Stored Product',
-            price: 15.99,
+            price: {
+              original: 15.99,
+              currency: 'USD'
+            },
             image: '/stored-image.jpg',
             quantity: 3
           }
@@ -272,8 +279,8 @@ describe('CartContext', () => {
       const storedCart = {
         cartId: 'guest_session_id',
         items: [
-          { id: '1', name: 'Item 1', price: 10, image: '/img1.jpg', quantity: 2 },
-          { id: '2', name: 'Item 2', price: 20, image: '/img2.jpg', quantity: 3 }
+          { id: '1', name: 'Item 1', price: { original: 10, currency: 'USD' }, image: '/img1.jpg', quantity: 2 },
+          { id: '2', name: 'Item 2', price: { original: 20, currency: 'USD' }, image: '/img2.jpg', quantity: 3 }
         ]
       };
       
@@ -288,8 +295,8 @@ describe('CartContext', () => {
       const storedCart = {
         cartId: 'guest_session_id',
         items: [
-          { id: '1', name: 'Item 1', price: 10.50, image: '/img1.jpg', quantity: 2 },
-          { id: '2', name: 'Item 2', price: 15.75, image: '/img2.jpg', quantity: 3 }
+          { id: '1', name: 'Item 1', price: { original: 10.50, currency: 'USD' }, image: '/img1.jpg', quantity: 2 },
+          { id: '2', name: 'Item 2', price: { original: 15.75, currency: 'USD' }, image: '/img2.jpg', quantity: 3 }
         ]
       };
       

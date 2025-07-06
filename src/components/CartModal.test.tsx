@@ -78,14 +78,21 @@ describe('CartModal', () => {
         {
           id: 'item-1',
           name: 'Test Product 1',
-          price: 29.99,
+          price: {
+            original: 39.99,
+            discount: 29.99,
+            currency: 'USD'
+          },
           image: '/test-image-1.jpg',
           quantity: 2
         },
         {
           id: 'item-2',
           name: 'Test Product 2',
-          price: 15.50,
+          price: {
+            original: 15.50,
+            currency: 'USD'
+          },
           image: '/test-image-2.jpg',
           quantity: 1
         }
@@ -147,7 +154,7 @@ describe('CartModal', () => {
       
       expect(screen.getByText('Subtotal (3 items):')).toBeInTheDocument();
       expect(screen.getByText('Total:')).toBeInTheDocument();
-      expect(screen.getAllByText('$75.48')).toHaveLength(2); // subtotal and total
+      expect(screen.getAllByText('$75.48')).toHaveLength(1); // just the total
     });
 
     it('should display both checkout and continue shopping buttons', () => {
@@ -171,7 +178,11 @@ describe('CartModal', () => {
         {
           id: 'test-item',
           name: 'Test Product',
-          price: 20.00,
+          price: {
+            original: 25.00,
+            discount: 20.00,
+            currency: 'USD'
+          },
           image: '/test-image.jpg',
           quantity: 3
         }
@@ -224,7 +235,10 @@ describe('CartModal', () => {
         {
           id: 'item-1',
           name: 'Product 1',
-          price: 12.50,
+          price: {
+            original: 12.50,
+            currency: 'USD'
+          },
           image: '/img1.jpg',
           quantity: 3
         }
@@ -234,7 +248,7 @@ describe('CartModal', () => {
       
       renderCartModal();
       
-      expect(screen.getAllByText('$37.50')).toHaveLength(3); // item total, subtotal, and final total
+      expect(screen.getAllByText('$37.50')).toHaveLength(3); // item total, subtotal, and final total (no discount)
     });
 
     it('should handle decimal prices correctly', () => {
@@ -242,7 +256,10 @@ describe('CartModal', () => {
         {
           id: 'item-1',
           name: 'Product 1',
-          price: 9.99,
+          price: {
+            original: 9.99,
+            currency: 'USD'
+          },
           image: '/img1.jpg',
           quantity: 2
         }
@@ -252,7 +269,7 @@ describe('CartModal', () => {
       
       renderCartModal();
       
-      expect(screen.getAllByText('$19.98')).toHaveLength(3); // item total, subtotal, and final total
+      expect(screen.getAllByText('$19.98')).toHaveLength(3); // item total, subtotal, and final total (no discount)
     });
   });
 
@@ -262,7 +279,10 @@ describe('CartModal', () => {
         {
           id: 'test-item',
           name: 'Test Product',
-          price: 10.00,
+          price: {
+            original: 10.00,
+            currency: 'USD'
+          },
           image: '/test.jpg',
           quantity: 1
         }
@@ -281,7 +301,10 @@ describe('CartModal', () => {
         {
           id: 'test-item',
           name: 'Test Product Name',
-          price: 10.00,
+          price: {
+            original: 10.00,
+            currency: 'USD'
+          },
           image: '/test.jpg',
           quantity: 1
         }
@@ -291,6 +314,55 @@ describe('CartModal', () => {
       
       const image = screen.getByRole('img');
       expect(image).toHaveAttribute('alt', 'Test Product Name');
+    });
+  });
+
+  describe('Enhanced Discount Display', () => {
+    beforeEach(() => {
+      mockCartContext.cartItems = [
+        {
+          id: 'discounted-item',
+          name: 'Discounted Product',
+          price: {
+            original: 14.99,
+            discount: 9.99,
+            currency: 'USD'
+          },
+          image: '/test-image.jpg',
+          quantity: 2
+        }
+      ];
+      mockCartContext.cartCount = 2;
+      mockCartContext.totalPrice = 19.98; // 9.99 * 2
+    });
+
+    it('should display discounted price, original price, and percentage off', () => {
+      renderCartModal();
+      
+      // Should show discounted price
+      expect(screen.getByText('$9.99')).toBeInTheDocument();
+      
+      // Should show original price with strikethrough
+      expect(screen.getByText('$14.99')).toBeInTheDocument();
+      
+      // Should show percentage off badge
+      expect(screen.getByText('33% OFF')).toBeInTheDocument();
+    });
+
+    it('should display comprehensive totals breakdown', () => {
+      renderCartModal();
+      
+      // Should show subtotal (original prices)
+      expect(screen.getByText('Subtotal (2 items):')).toBeInTheDocument();
+      expect(screen.getByText('$29.98')).toBeInTheDocument(); // 14.99 * 2
+      
+      // Should show discount savings
+      expect(screen.getByText('Discount savings:')).toBeInTheDocument();
+      expect(screen.getByText('−$10.00')).toBeInTheDocument(); // (14.99 - 9.99) * 2
+      
+      // Should show final total
+      expect(screen.getByText('Total:')).toBeInTheDocument();
+      expect(screen.getAllByText('$19.98')).toHaveLength(2); // item total and final total
     });
   });
 }); 
