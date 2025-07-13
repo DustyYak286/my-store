@@ -16,12 +16,12 @@
   - [x] 1.1 Create a new directory `src/app/checkout`.
   - [x] 1.2 Create a new file `src/app/checkout/page.tsx`.
   - [x] 1.3 Add the basic layout to the `page.tsx` file, including a main container and placeholders for the `OrderSummary` and `CheckoutForm` components.
-- [ ] 2.0 Implement the Order Summary component.
-  - [ ] 2.1 Create a new file `src/components/OrderSummary.tsx`.
-  - [ ] 2.2 In `OrderSummary.tsx`, fetch cart data (`cartItems`, `totalPrice`) from `useCart` context.
-  - [ ] 2.3 Display the cart items, including product image, name, quantity, and price for each item.
-  - [ ] 2.4 Display the total price of the order.
-  - [ ] 2.5 Add styling to match the website's design.
+- [x] 2.0 Implement the Order Summary component.
+  - [x] 2.1 Create a new file `src/components/OrderSummary.tsx`.
+  - [x] 2.2 In `OrderSummary.tsx`, fetch cart data (`cartItems`, `totalPrice`) from `useCart` context.
+  - [x] 2.3 Display the cart items, including product image, name, quantity, and price for each item.
+  - [x] 2.4 Display the total price of the order.
+  - [x] 2.5 Add styling to match the website's design.
 - [ ] 3.0 Implement the Checkout Form component.
   - [ ] 3.1 Create a new file `src/components/CheckoutForm.tsx`.
   - [ ] 3.2 Create state variables using `useState` to manage the form inputs (Contact, Shipping, Billing).
