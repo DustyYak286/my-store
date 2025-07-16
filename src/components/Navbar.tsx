@@ -4,12 +4,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { ShoppingCart } from "lucide-react";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import CartModal from "./CartModal";
 import { useCart } from "@/context/CartContext";
 
 const Navbar = () => {
   const [cartOpen, setCartOpen] = useState(false);
   const { cartCount } = useCart();
+  const pathname = usePathname();
+  
+  // Hide navigation buttons on checkout page
+  const isCheckoutPage = pathname === '/checkout';
 
   return (
     <nav className="w-full bg-analenn-primary px-6 py-4">
@@ -29,46 +34,48 @@ const Navbar = () => {
           </span>
         </Link>
 
-        {/* Right: Navigation Links and Cart */}
-        <div className="flex items-center gap-8">
-          <a
-            href="#product"
-            className="text-white text-lg font-medium transition hover:underline hover:decoration-2 hover:decoration-analenn-accent"
-            onClick={e => {
-              e.preventDefault();
-              const el = document.getElementById('product');
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-            }}
-          >
-            Product
-          </a>
-          <a
-            href="#features"
-            className="text-white text-lg font-medium transition hover:underline hover:decoration-2 hover:decoration-analenn-accent"
-          >
-            Features
-          </a>
-          <a
-            href="#reviews"
-            className="text-white text-lg font-medium transition hover:underline hover:decoration-2 hover:decoration-analenn-accent"
-          >
-            Reviews
-          </a>
-          <button
-            onClick={() => setCartOpen(true)}
-            className="relative ml-4 focus:outline-none"
-            aria-label="Open cart"
-          >
-            <ShoppingCart className="w-7 h-7 text-white" />
-            {cartCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-analenn-accent text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] flex items-center justify-center">
-                {cartCount}
-              </span>
-            )}
-          </button>
-        </div>
+        {/* Right: Navigation Links and Cart - Hidden on checkout page */}
+        {!isCheckoutPage && (
+          <div className="flex items-center gap-8">
+            <a
+              href="#product"
+              className="text-white text-lg font-medium transition hover:underline hover:decoration-2 hover:decoration-analenn-accent"
+              onClick={e => {
+                e.preventDefault();
+                const el = document.getElementById('product');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }}
+            >
+              Product
+            </a>
+            <a
+              href="#features"
+              className="text-white text-lg font-medium transition hover:underline hover:decoration-2 hover:decoration-analenn-accent"
+            >
+              Features
+            </a>
+            <a
+              href="#reviews"
+              className="text-white text-lg font-medium transition hover:underline hover:decoration-2 hover:decoration-analenn-accent"
+            >
+              Reviews
+            </a>
+            <button
+              onClick={() => setCartOpen(true)}
+              className="relative ml-4 focus:outline-none"
+              aria-label="Open cart"
+            >
+              <ShoppingCart className="w-7 h-7 text-white" />
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-analenn-accent text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
       </div>
       <CartModal open={cartOpen} onClose={() => setCartOpen(false)} />
     </nav>

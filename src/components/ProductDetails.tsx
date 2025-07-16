@@ -4,11 +4,13 @@ import Image from "next/image";
 import { Star } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
+import { useRouter } from "next/navigation";
 
 const ProductDetails = ({ productId }) => {
   const [quantity, setQuantity] = useState(1);
-  const { addToCart } = useCart();
+  const { addToCart, cartItems } = useCart();
   const [productData, setProductData] = useState(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (!productId) return;
@@ -20,6 +22,25 @@ const ProductDetails = ({ productId }) => {
       .then((data) => setProductData(data))
       .catch((err) => setProductData({ error: err.message }));
   }, [productId]);
+
+  const handleBuyNow = () => {
+    if (!productData || productData.error) return;
+    
+    // If cart is empty, add the selected quantity first
+    if (cartItems.length === 0) {
+      const cartItem = {
+        id: productData.id,
+        name: productData.name,
+        price: productData.price,
+        image: productData.image,
+        quantity: quantity
+      };
+      addToCart(cartItem, quantity);
+    }
+    
+    // Redirect to checkout page
+    router.push('/checkout');
+  };
 
   // Loading and error handling
   if (!productData) {
@@ -165,7 +186,10 @@ const ProductDetails = ({ productId }) => {
             >
               + Add to Cart
             </button>
-            <button className="border-2 border-analenn-primary text-analenn-primary font-semibold py-3 px-8 rounded-lg shadow-sm hover:bg-analenn-primary hover:text-white transition text-base flex items-center justify-center w-full">
+            <button 
+              className="border-2 border-analenn-primary text-analenn-primary font-semibold py-3 px-8 rounded-lg shadow-sm hover:bg-analenn-primary hover:text-white transition text-base flex items-center justify-center w-full"
+              onClick={handleBuyNow}
+            >
               Buy Now
             </button>
           </div>

@@ -3,11 +3,13 @@
 import Image from "next/image";
 import { useCart } from "@/context/CartContext";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 const Hero = () => {
-  const { addToCart } = useCart();
+  const { addToCart, cartItems } = useCart();
   const [productData, setProductData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   // Fetch the Capybara Bracelet product (ID: 1) from the API
   useEffect(() => {
@@ -42,6 +44,25 @@ const Hero = () => {
       quantity: 1
     };
     addToCart(cartItem, 1);
+  };
+
+  const handleBuyNow = () => {
+    if (!productData) return;
+    
+    // If cart is empty, add one item first
+    if (cartItems.length === 0) {
+      const cartItem = {
+        id: productData.id,
+        name: productData.name,
+        price: productData.price,
+        image: productData.image,
+        quantity: 1
+      };
+      addToCart(cartItem, 1);
+    }
+    
+    // Redirect to checkout page
+    router.push('/checkout');
   };
 
   return (
@@ -98,8 +119,12 @@ const Hero = () => {
             >
               {isLoading ? 'Loading...' : '+ Add to Cart'}
             </button>
-            <button className="border-2 border-analenn-primary text-analenn-primary font-semibold py-3 px-8 rounded-lg shadow-sm hover:bg-analenn-primary hover:text-white transition text-base flex items-center justify-center">
-              Buy Now
+            <button 
+              className="border-2 border-analenn-primary text-analenn-primary font-semibold py-3 px-8 rounded-lg shadow-sm hover:bg-analenn-primary hover:text-white transition text-base flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleBuyNow}
+              disabled={isLoading || !productData}
+            >
+              {isLoading ? 'Loading...' : 'Buy Now'}
             </button>
           </div>
         </div>

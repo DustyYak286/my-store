@@ -104,8 +104,59 @@ describe("OrderSummary", () => {
     it("displays correct quantities", () => {
       render(<OrderSummary />);
 
-      expect(screen.getByText("Qty: 2")).toBeInTheDocument();
-      expect(screen.getByText("Qty: 1")).toBeInTheDocument();
+      // Check for quantity values in the quantity controls
+      expect(screen.getByText("2")).toBeInTheDocument();
+      expect(screen.getByText("1")).toBeInTheDocument();
+      
+      // Check for quantity control buttons
+      expect(screen.getAllByLabelText("Increase quantity")).toHaveLength(2);
+      expect(screen.getAllByLabelText("Decrease quantity")).toHaveLength(2);
+      expect(screen.getAllByLabelText("Remove item")).toHaveLength(2);
+    });
+
+    it("calls updateItemQuantity when quantity buttons are clicked", () => {
+      const mockUpdateItemQuantity = jest.fn();
+      const mockRemoveFromCart = jest.fn();
+      
+      (useCart as jest.Mock).mockReturnValue({
+        cartItems: [mockCartItem],
+        cartCount: 2,
+        updateItemQuantity: mockUpdateItemQuantity,
+        removeFromCart: mockRemoveFromCart,
+      });
+
+      render(<OrderSummary />);
+
+      const increaseButton = screen.getByLabelText("Increase quantity");
+      const decreaseButton = screen.getByLabelText("Decrease quantity");
+      
+      // Test increase quantity
+      increaseButton.click();
+      expect(mockUpdateItemQuantity).toHaveBeenCalledWith("1", 3); // 2 + 1
+      
+      // Test decrease quantity
+      decreaseButton.click();
+      expect(mockUpdateItemQuantity).toHaveBeenCalledWith("1", 1); // 2 - 1
+    });
+
+    it("calls removeFromCart when remove button is clicked", () => {
+      const mockUpdateItemQuantity = jest.fn();
+      const mockRemoveFromCart = jest.fn();
+      
+      (useCart as jest.Mock).mockReturnValue({
+        cartItems: [mockCartItem],
+        cartCount: 2,
+        updateItemQuantity: mockUpdateItemQuantity,
+        removeFromCart: mockRemoveFromCart,
+      });
+
+      render(<OrderSummary />);
+
+      const removeButton = screen.getByLabelText("Remove item");
+      
+      // Test remove item
+      removeButton.click();
+      expect(mockRemoveFromCart).toHaveBeenCalledWith("1");
     });
 
     it("calculates and displays item totals correctly", () => {
