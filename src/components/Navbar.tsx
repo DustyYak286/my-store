@@ -27,7 +27,6 @@ const Navbar = () => {
             width={48}
             height={48}
             className="w-12 h-12 rounded-lg object-contain mr-3"
-            priority
           />
           <span className="text-2xl font-extrabold text-white tracking-wide">
             Analenn
@@ -40,13 +39,6 @@ const Navbar = () => {
             <a
               href="#product"
               className="text-white text-lg font-medium transition hover:underline hover:decoration-2 hover:decoration-analenn-accent"
-              onClick={e => {
-                e.preventDefault();
-                const el = document.getElementById('product');
-                if (el) {
-                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-              }}
             >
               Product
             </a>
