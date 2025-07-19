@@ -2,6 +2,14 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import CartModal from './CartModal';
 
+// Mock the useRouter hook from Next.js
+const mockPush = jest.fn();
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
+}));
+
 // Mock the useCart hook directly
 const mockCartContext = {
   cartItems: [],
@@ -27,6 +35,7 @@ const renderCartModal = (open = true, onClose = jest.fn()) => {
 describe('CartModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPush.mockClear();
     // Reset mock context to empty state
     mockCartContext.cartItems = [];
     mockCartContext.cartCount = 0;
@@ -160,15 +169,19 @@ describe('CartModal', () => {
     it('should display both checkout and continue shopping buttons', () => {
       renderCartModal();
       
-      expect(screen.getByText('Checkout (Coming Soon)')).toBeInTheDocument();
+      expect(screen.getByText('Checkout')).toBeInTheDocument();
       expect(screen.getByText('Continue Shopping')).toBeInTheDocument();
     });
 
-    it('should have disabled checkout button', () => {
+    it('should have enabled checkout button that navigates to checkout', () => {
       renderCartModal();
       
-      const checkoutButton = screen.getByText('Checkout (Coming Soon)');
-      expect(checkoutButton).toBeDisabled();
+      const checkoutButton = screen.getByText('Checkout');
+      expect(checkoutButton).toBeEnabled();
+      
+      // Test that clicking the button calls router.push
+      fireEvent.click(checkoutButton);
+      expect(mockPush).toHaveBeenCalledWith('/checkout');
     });
   });
 

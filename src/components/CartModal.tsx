@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { ShoppingCart, X, Plus, Minus, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/utils/formatPrice";
 
@@ -9,6 +10,7 @@ interface CartModalProps {
 }
 
 const CartModal = ({ open, onClose }: CartModalProps) => {
+  const router = useRouter();
   // Connect to CartContext to access cart items and totals
   const { cartItems, cartCount, totalPrice, updateItemQuantity, removeFromCart } = useCart();
 
@@ -184,11 +186,13 @@ const CartModal = ({ open, onClose }: CartModalProps) => {
             <>
               <button
                 key="checkout-button"
-                disabled
-                className="w-full bg-gray-400 text-white px-6 py-3 rounded-lg font-semibold cursor-not-allowed text-center"
-                title="Checkout functionality coming soon"
+                onClick={() => {
+                  onClose();
+                  router.push("/checkout");
+                }}
+                className="w-full bg-[#7C4D59] text-white px-6 py-3 rounded-lg font-semibold focus:outline-none hover:bg-[#633a48] transition-colors text-center"
               >
-                Checkout (Coming Soon)
+                Checkout
               </button>
               <button
                 key="continue-shopping-button"

@@ -2,26 +2,60 @@
 
 import Image from "next/image";
 import { Star } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useCart } from "@/context/CartContext";
+import { useRouter } from "next/navigation";
 
-const ProductDetails = ({ productId }) => {
+interface ProductData {
+  id: number;
+  name: string;
+  description: string;
+  price: {
+    original: number;
+    discount?: number;
+    currency: string;
+  };
+  image: string;
+  stock: {
+    available: boolean;
+    quantity: number;
+  };
+  reviews: Array<{
+    rating: number;
+    text: string;
+    author: string;
+  }>;
+}
+
+interface ProductDetailsProps {
+  productData: ProductData | null;
+}
+
+const ProductDetails = ({ productData }: ProductDetailsProps) => {
   const [quantity, setQuantity] = useState(1);
-  const { addToCart } = useCart();
-  const [productData, setProductData] = useState(null);
+  const { addToCart, cartItems } = useCart();
+  const router = useRouter();
 
-  useEffect(() => {
-    if (!productId) return;
-    fetch(`/api/products?id=${productId}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Product not found");
-        return res.json();
-      })
-      .then((data) => setProductData(data))
-      .catch((err) => setProductData({ error: err.message }));
-  }, [productId]);
+  const handleBuyNow = () => {
+    if (!productData) return;
+    
+    // If cart is empty, add the selected quantity first
+    if (cartItems.length === 0) {
+      const cartItem = {
+        id: String(productData.id),
+        name: productData.name,
+        price: productData.price,
+        image: productData.image,
+        quantity: quantity
+      };
+      addToCart(cartItem, quantity);
+    }
+    
+    // Redirect to checkout page
+    router.push('/checkout');
+  };
 
-  // Loading and error handling
+  // Handle missing product data gracefully
   if (!productData) {
     return (
       <section
@@ -31,25 +65,11 @@ const ProductDetails = ({ productId }) => {
         <h2 className="text-3xl font-extrabold text-analenn-primary text-center mb-12">
           Product Details
         </h2>
-        <div className="text-center text-analenn-primary">
-          Loading product...
-        </div>
+        <div className="text-center text-red-600">Product not found</div>
       </section>
     );
   }
-  if (productData.error) {
-    return (
-      <section
-        id="product"
-        className="bg-white pt-4 pb-28 px-6 max-w-6xl mx-auto rounded-2xl shadow-sm"
-      >
-        <h2 className="text-3xl font-extrabold text-analenn-primary text-center mb-12">
-          Product Details
-        </h2>
-        <div className="text-center text-red-600">{productData.error}</div>
-      </section>
-    );
-  }
+
   const product = productData;
 
   return (
@@ -154,7 +174,7 @@ const ProductDetails = ({ productId }) => {
               className="bg-analenn-primary text-white font-semibold py-3 px-8 rounded-lg shadow-sm hover:bg-analenn-secondary transition text-base flex items-center justify-center w-full"
               onClick={() => {
                 const cartItem = {
-                  id: product.id,
+                  id: String(product.id),
                   name: product.name,
                   price: product.price,
                   image: product.image,
@@ -165,7 +185,10 @@ const ProductDetails = ({ productId }) => {
             >
               + Add to Cart
             </button>
-            <button className="border-2 border-analenn-primary text-analenn-primary font-semibold py-3 px-8 rounded-lg shadow-sm hover:bg-analenn-primary hover:text-white transition text-base flex items-center justify-center w-full">
+            <button 
+              className="border-2 border-analenn-primary text-analenn-primary font-semibold py-3 px-8 rounded-lg shadow-sm hover:bg-analenn-primary hover:text-white transition text-base flex items-center justify-center w-full"
+              onClick={handleBuyNow}
+            >
               Buy Now
             </button>
           </div>
