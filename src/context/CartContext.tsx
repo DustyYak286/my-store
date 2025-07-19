@@ -1,15 +1,16 @@
 "use client";
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react";
+import { CART_STORAGE_KEY } from "@/constants/storage";
 
 // Define the price structure
-interface Price {
+export interface Price {
   original: number;
   discount?: number;
   currency: string;
 }
 
 // Define the CartItem type
-interface CartItem {
+export interface CartItem {
   id: string;
   name: string;
   price: Price;
@@ -42,9 +43,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   // Cart items state - array of CartItem objects
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
-
-  // localStorage key for cart data
-  const CART_STORAGE_KEY = 'analenn_cart';
 
   // Load cart from localStorage on component mount
   useEffect(() => {
@@ -82,15 +80,21 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [cartItems, isLoaded]);
 
-  // Calculate cart count from items
-  const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
+  // Memoized cart count calculation
+  const cartCount = useMemo(() => 
+    cartItems.reduce((total, item) => total + item.quantity, 0),
+    [cartItems]
+  );
 
-  // Calculate total price from items (using discounted price)
-  const totalPrice = cartItems.reduce((total, item) => {
-    const itemPrice = item.price.discount ?? item.price.original;
-    const itemQuantity = typeof item.quantity === 'number' ? item.quantity : 0;
-    return total + (itemPrice * itemQuantity);
-  }, 0);
+  // Memoized total price calculation (using discounted price)
+  const totalPrice = useMemo(() => 
+    cartItems.reduce((total, item) => {
+      const itemPrice = item.price.discount ?? item.price.original;
+      const itemQuantity = typeof item.quantity === 'number' ? item.quantity : 0;
+      return total + (itemPrice * itemQuantity);
+    }, 0),
+    [cartItems]
+  );
 
   // Add items to cart - adds new item or updates quantity if it already exists
   const addToCart = (item: CartItem, quantity: number) => {
@@ -102,16 +106,15 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     
     setCartItems((prevItems) => {
       // Check if item already exists in cart
-      const existingItemIndex = prevItems.findIndex(cartItem => cartItem.id === item.id);
+      const existingItem = prevItems.find(cartItem => cartItem.id === item.id);
       
-      if (existingItemIndex >= 0) {
-        // Item exists, update quantity
-        const updatedItems = [...prevItems];
-        updatedItems[existingItemIndex] = {
-          ...updatedItems[existingItemIndex],
-          quantity: updatedItems[existingItemIndex].quantity + quantity
-        };
-        return updatedItems;
+      if (existingItem) {
+        // Item exists, update quantity using map
+        return prevItems.map(cartItem =>
+          cartItem.id === item.id
+            ? { ...cartItem, quantity: cartItem.quantity + quantity }
+            : cartItem
+        );
       } else {
         // Item doesn't exist, add new item
         const newItem: CartItem = {
@@ -139,19 +142,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     
-    setCartItems((prevItems) => {
-      const updatedItems = [...prevItems];
-      const itemIndex = updatedItems.findIndex(item => item.id === itemId);
-      
-      if (itemIndex >= 0) {
-        updatedItems[itemIndex] = {
-          ...updatedItems[itemIndex],
-          quantity: newQuantity
-        };
-      }
-      
-      return updatedItems;
-    });
+    setCartItems((prevItems) =>
+      prevItems.map(item =>
+        item.id === itemId
+          ? { ...item, quantity: newQuantity }
+          : item
+      )
+    );
   };
 
   // Clear all items from cart
