@@ -1,4 +1,9 @@
-export const faqs = [
+export interface FAQ {
+  question: string;
+  answer: string;
+}
+
+export const faqs: FAQ[] = [
   {
     question: "What materials is Cappy made from?",
     answer:

@@ -1,4 +1,12 @@
-export const reviews = [
+export interface Review {
+  title: string;
+  text: string;
+  reviewer: string;
+  avatar: string;
+  role: string;
+}
+
+export const reviews: Review[] = [
   {
     title: "Best Gift Ever!",
     text: "I bought this for my daughter's birthday and she absolutely loves it! The quality is amazing and it's so soft.",

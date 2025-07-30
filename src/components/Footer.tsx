@@ -34,7 +34,7 @@ const Footer = () => (
       <div>
         <h3 className="font-semibold text-white mb-2">Analenn</h3>
         <blockquote className="text-[#f4e9ea] text-sm italic flex flex-col items-center space-y-0">
-          {footerLinks[0].quote.map((line, idx) => (
+          {footerLinks[0]?.quote?.map((line, idx) => (
             <span key={idx}>{line}</span>
           ))}
         </blockquote>
@@ -43,7 +43,7 @@ const Footer = () => (
       <div>
         <h3 className="font-semibold text-white mb-2">Shop</h3>
         <ul className="space-y-1">
-          {footerLinks[1].items.map((item) => (
+          {footerLinks[1]?.items?.map((item) => (
             <li key={item.label}>
               <a
                 href={item.href}
@@ -59,7 +59,7 @@ const Footer = () => (
       <div>
         <h3 className="font-semibold text-white mb-2">Help</h3>
         <ul className="space-y-1">
-          {footerLinks[2].items.map((item) => (
+          {footerLinks[2]?.items?.map((item) => (
             <li key={item.label}>
               <a
                 href={item.href}

@@ -2,7 +2,7 @@ import { usePathname } from "next/navigation";
 import { useIntersectionObserver } from "./useIntersectionObserver";
 
 interface UseFloatingCartVisibilityProps {
-  navbarRef: React.RefObject<HTMLElement>;
+  navbarRef: React.RefObject<HTMLElement | null>;
 }
 
 export const useFloatingCartVisibility = ({ navbarRef }: UseFloatingCartVisibilityProps) => {

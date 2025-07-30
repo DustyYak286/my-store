@@ -11,12 +11,12 @@ export function useIntersectionObserver(
 ): { elementRef: React.RefObject<HTMLElement>; isIntersecting: boolean };
 
 export function useIntersectionObserver(
-  externalRef: React.RefObject<HTMLElement>,
+  externalRef: React.RefObject<HTMLElement | null>,
   options?: UseIntersectionObserverOptions
 ): { isIntersecting: boolean };
 
 export function useIntersectionObserver(
-  optionsOrRef?: UseIntersectionObserverOptions | React.RefObject<HTMLElement>,
+  optionsOrRef?: UseIntersectionObserverOptions | React.RefObject<HTMLElement | null>,
   options?: UseIntersectionObserverOptions
 ) {
   const [isIntersecting, setIsIntersecting] = useState(false);
@@ -24,7 +24,7 @@ export function useIntersectionObserver(
   
   // Determine if first argument is a ref or options
   const isExternalRef = optionsOrRef && 'current' in optionsOrRef;
-  const elementRef = isExternalRef ? optionsOrRef as React.RefObject<HTMLElement> : internalRef;
+  const elementRef = isExternalRef ? optionsOrRef as React.RefObject<HTMLElement | null> : internalRef;
   const finalOptions: UseIntersectionObserverOptions = isExternalRef 
     ? options || {} 
     : (optionsOrRef as UseIntersectionObserverOptions) || {};
@@ -35,7 +35,9 @@ export function useIntersectionObserver(
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setIsIntersecting(entry.isIntersecting);
+        if (entry) {
+          setIsIntersecting(entry.isIntersecting);
+        }
       },
       {
         threshold: finalOptions.threshold || 0,

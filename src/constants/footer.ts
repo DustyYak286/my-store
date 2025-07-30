@@ -1,4 +1,15 @@
-export const footerLinks = [
+interface FooterItem {
+  label: string;
+  href: string;
+}
+
+interface FooterSection {
+  heading: string;
+  quote?: string[];
+  items?: FooterItem[];
+}
+
+export const footerLinks: FooterSection[] = [
   {
     heading: "Analenn",
     quote: ["Copilul care", "a visat", "gresit"],
@@ -22,3 +33,6 @@ export const footerLinks = [
     ],
   },
 ];
+
+// Type exports
+export type { FooterItem, FooterSection };

@@ -1,6 +1,33 @@
-// Initial product data for the Product API
+// Product data types and initial data for the Product API
 
-const products = [
+export interface ProductPrice {
+  original: number;
+  discount?: number;
+  currency: string;
+}
+
+export interface ProductStock {
+  available: boolean;
+  quantity: number;
+}
+
+export interface ProductReview {
+  rating: number;
+  text: string;
+  author: string;
+}
+
+export interface Product {
+  id: number;
+  name: string;
+  description: string;
+  price: ProductPrice;
+  image: string;
+  stock: ProductStock;
+  reviews: ProductReview[];
+}
+
+const products: Product[] = [
   {
     id: 1,
     name: "Capybara Bracelet",
@@ -32,4 +59,4 @@ const products = [
   // Add more products as needed
 ];
 
-module.exports = products;
+export default products;

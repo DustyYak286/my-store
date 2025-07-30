@@ -8,7 +8,7 @@ import { STORE_NAME, STORE_DESCRIPTION } from "@/constants/store";
 import { CartProvider } from "@/context/CartContext";
 import { CartModalProvider } from "@/context/CartModalContext";
 import { ToastProvider } from "@/context/ToastContext";
-import { useRef } from "react";
+import { useRef, ReactNode } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,8 +20,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export default function RootLayout({ children }) {
-  const navbarRef = useRef(null);
+interface RootLayoutProps {
+  children: ReactNode;
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
+  const navbarRef = useRef<HTMLElement>(null);
   
   return (
     <html lang="en" id="top">

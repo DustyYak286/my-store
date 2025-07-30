@@ -7,7 +7,7 @@ import { useCartModal } from "@/context/CartModalContext";
 import { useFloatingCartVisibility } from "@/hooks/useFloatingCartVisibility";
 
 interface FloatingCartButtonProps {
-  navbarRef: React.RefObject<HTMLElement>;
+  navbarRef: React.RefObject<HTMLElement | null>;
 }
 
 const FloatingCartButton = ({ navbarRef }: FloatingCartButtonProps) => {

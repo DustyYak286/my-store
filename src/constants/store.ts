@@ -7,7 +7,7 @@ export const NAVIGATION = {
   PRODUCT: "/product",
   CART: "/cart",
   CHECKOUT: "/checkout",
-};
+} as const;
 
 export const PRODUCT = {
   NAME: "Capybara Bracelet",
@@ -21,4 +21,8 @@ export const PRODUCT = {
     "Hypoallergenic materials",
     "Water-resistant",
   ],
-};
+} as const;
+
+// Type exports for better type safety
+export type NavigationKeys = keyof typeof NAVIGATION;
+export type NavigationPath = typeof NAVIGATION[NavigationKeys];
