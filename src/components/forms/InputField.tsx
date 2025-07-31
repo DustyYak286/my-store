@@ -3,17 +3,7 @@
 import React from "react";
 import { checkoutConfig } from "@/config/checkout";
 import { getAutoCompleteValue } from "@/utils/formHelpers";
-
-export interface InputFieldProps {
-  label: string;
-  name: string;
-  type?: string | undefined;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
-  error?: string | undefined;
-  required?: boolean | undefined;
-}
+import type { InputFieldProps } from "@/types/ui";
 
 export const InputField: React.FC<InputFieldProps> = ({ 
   label, 

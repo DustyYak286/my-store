@@ -1,24 +1,10 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react";
 import { CART_STORAGE_KEY } from "@/constants/storage";
+import type { CartItem } from "@/types/cart";
+import type { ID } from "@/types/common";
 
-// Define the price structure
-export interface Price {
-  original: number;
-  discount?: number;
-  currency: string;
-}
-
-// Define the CartItem type
-export interface CartItem {
-  id: string;
-  name: string;
-  price: Price;
-  image: string;
-  quantity: number;
-}
-
-// Define the shape of the cart context
+// Local cart context interface (different from types/cart.ts)
 interface CartContextType {
   cartItems: CartItem[];
   cartCount: number;

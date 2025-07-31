@@ -85,18 +85,7 @@ const nextConfig = {
     ];
   },
   
-  // Enable security-related webpack optimizations
-  webpack: (config, { dev, isServer }) => {
-    // Production security optimizations
-    if (!dev && !isServer) {
-      // Remove console.log statements in production for security
-      config.optimization.minimizer[0].options.terserOptions.compress.drop_console = true;
-    }
-    
-    return config;
-  },
-  
-  // Security-related experimental features
+  // Security-related experimental features  
   experimental: {
     // Enable security headers in middleware
     middlewarePrefetch: 'strict',
