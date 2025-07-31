@@ -1,9 +1,116 @@
 "use client";
 
+import React, { memo, useMemo, useCallback } from "react";
 import { useCart, CartItem } from "@/context/CartContext";
 import { useCartTotals, getPercentageOff } from "@/hooks/useCartTotals";
 import { formatPrice } from "@/utils/formatPrice";
 import { Plus, Minus, Trash2 } from "lucide-react";
+
+// Memoized order item component for optimal performance
+interface OrderItemProps {
+  item: CartItem;
+  onUpdateQuantity: (id: string, quantity: number) => void;
+  onRemove: (id: string) => void;
+}
+
+const OrderItem = memo<OrderItemProps>(({ item, onUpdateQuantity, onRemove }) => {
+  // Memoize price calculations
+  const priceDetails = useMemo(() => {
+    const hasDiscount = item.price.discount && item.price.discount < item.price.original;
+    const discountedPrice = item.price.discount ?? item.price.original;
+    const percentOff = hasDiscount ? getPercentageOff(item.price.original, item.price.discount!) : 0;
+    
+    return { hasDiscount, discountedPrice, percentOff };
+  }, [item.price.discount, item.price.original]);
+
+  // Memoize event handlers
+  const handleIncrement = useCallback(() => {
+    onUpdateQuantity(item.id, item.quantity + 1);
+  }, [item.id, item.quantity, onUpdateQuantity]);
+
+  const handleDecrement = useCallback(() => {
+    if (item.quantity > 1) {
+      onUpdateQuantity(item.id, item.quantity - 1);
+    }
+  }, [item.id, item.quantity, onUpdateQuantity]);
+
+  const handleRemove = useCallback(() => {
+    onRemove(item.id);
+  }, [item.id, onRemove]);
+
+  const { hasDiscount, discountedPrice, percentOff } = priceDetails;
+
+  return (
+    <div className="flex items-center gap-4 p-4 border border-gray-100 rounded-lg">
+      <img 
+        src={item.image} 
+        alt={item.name}
+        className="w-16 h-16 object-cover rounded-md flex-shrink-0"
+      />
+      
+      <div className="flex-1 min-w-0">
+        <h3 className="font-medium text-analenn-primary truncate">{item.name}</h3>
+        
+        {/* Price Display */}
+        <div className="flex items-center gap-2 flex-wrap mt-1">
+          <span className="text-analenn-primary font-semibold">
+            ${formatPrice(discountedPrice)}
+          </span>
+          {hasDiscount && (
+            <>
+              <span className="text-gray-500 text-sm line-through">
+                ${formatPrice(item.price.original)}
+              </span>
+              <span className="bg-analenn-accent/20 text-analenn-primary text-xs px-2 py-1 rounded-md font-medium">
+                {percentOff}% OFF
+              </span>
+            </>
+          )}
+        </div>
+        
+        {/* Quantity Controls */}
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            onClick={handleDecrement}
+            className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+            aria-label="Decrease quantity"
+          >
+            <Minus size={14} />
+          </button>
+          
+          <span className="text-analenn-primary font-medium text-sm min-w-[20px] text-center">
+            {item.quantity}
+          </span>
+          
+          <button
+            onClick={handleIncrement}
+            className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+            aria-label="Increase quantity"
+          >
+            <Plus size={14} />
+          </button>
+          
+          <button
+            onClick={handleRemove}
+            className="ml-2 w-8 h-8 flex items-center justify-center bg-red-100 hover:bg-red-200 rounded-full text-red-600 transition-colors"
+            aria-label="Remove item"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+      
+      {/* Item Total */}
+      <div className="text-right">
+        <p className="text-analenn-primary font-semibold">
+          ${formatPrice(discountedPrice * item.quantity)}
+        </p>
+      </div>
+    </div>
+  );
+});
+
+OrderItem.displayName = 'OrderItem';
 
 export default function OrderSummary() {
   const { cartItems, cartCount, updateItemQuantity, removeFromCart } = useCart();
@@ -35,85 +142,14 @@ export default function OrderSummary() {
       
       {/* Cart Items */}
       <div className="space-y-4 mb-6">
-        {cartItems.map((item) => {
-          const hasDiscount = item.price.discount && item.price.discount < item.price.original;
-          const discountedPrice = item.price.discount ?? item.price.original;
-          const percentOff = hasDiscount ? getPercentageOff(item.price.original, item.price.discount!) : 0;
-          
-          return (
-            <div key={item.id} className="flex items-center gap-4 p-4 border border-gray-100 rounded-lg">
-              <img 
-                src={item.image} 
-                alt={item.name}
-                className="w-16 h-16 object-cover rounded-md flex-shrink-0"
-              />
-              
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-analenn-primary truncate">
-                  {item.name}
-                </h3>
-                
-                {/* Price Information */}
-                <div className="flex items-center gap-2 flex-wrap mt-1">
-                  <span className="text-analenn-primary font-semibold">
-                    ${formatPrice(discountedPrice)}
-                  </span>
-                  {hasDiscount && (
-                    <>
-                      <span className="text-gray-500 text-sm line-through">
-                        ${formatPrice(item.price.original)}
-                      </span>
-                      <span className="bg-neutral-100 text-analenn-primary text-xs px-2 py-1 rounded-md font-medium">
-                        {percentOff}% OFF
-                      </span>
-                    </>
-                  )}
-                </div>
-                
-                {/* Quantity Controls */}
-                <div className="flex items-center gap-3 mt-3">
-                  <span className="text-gray-600 text-sm">Qty:</span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
-                      className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full text-analenn-primary transition-colors"
-                      aria-label="Decrease quantity"
-                    >
-                      <Minus size={14} />
-                    </button>
-                    
-                    <span className="text-analenn-primary font-medium text-sm min-w-[24px] text-center">
-                      {item.quantity}
-                    </span>
-                    
-                    <button
-                      onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
-                      className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full text-analenn-primary transition-colors"
-                      aria-label="Increase quantity"
-                    >
-                      <Plus size={14} />
-                    </button>
-                    
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="ml-2 w-8 h-8 flex items-center justify-center bg-red-50 hover:bg-red-100 rounded-full text-red-600 transition-colors"
-                      aria-label="Remove item"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Item Total */}
-              <div className="text-right">
-                <div className="text-analenn-primary font-semibold">
-                  ${formatPrice(discountedPrice * item.quantity)}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        {cartItems.map((item) => (
+          <OrderItem
+            key={item.id}
+            item={item}
+            onUpdateQuantity={updateItemQuantity}
+            onRemove={removeFromCart}
+          />
+        ))}
       </div>
       
       {/* Order Totals */}

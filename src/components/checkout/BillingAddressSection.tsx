@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import { InputField } from "@/components/forms/InputField";
 import { SelectField } from "@/components/forms/SelectField";
 import { checkoutConfig } from "@/config/checkout";
@@ -15,7 +15,7 @@ interface BillingAddressSectionProps {
   countries: string[];
 }
 
-export const BillingAddressSection: React.FC<BillingAddressSectionProps> = ({
+export const BillingAddressSection = memo<BillingAddressSectionProps>(({
   formData,
   errors,
   onChange,
@@ -101,4 +101,6 @@ export const BillingAddressSection: React.FC<BillingAddressSectionProps> = ({
       )}
     </div>
   );
-};
+});
+
+BillingAddressSection.displayName = 'BillingAddressSection';

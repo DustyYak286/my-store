@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import { InputField } from "@/components/forms/InputField";
 import { checkoutConfig } from "@/config/checkout";
 import type { FormData, FormErrors } from "@/types/checkout";
@@ -12,7 +12,7 @@ interface ContactInfoSectionProps {
   onBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
 }
 
-export const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
+export const ContactInfoSection = memo<ContactInfoSectionProps>(({
   formData,
   errors,
   onChange,
@@ -37,4 +37,6 @@ export const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
       />
     </div>
   );
-};
+});
+
+ContactInfoSection.displayName = 'ContactInfoSection';

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import { InputField } from "@/components/forms/InputField";
 import { SelectField } from "@/components/forms/SelectField";
 import { checkoutConfig } from "@/config/checkout";
@@ -14,7 +14,7 @@ interface ShippingAddressSectionProps {
   countries: string[];
 }
 
-export const ShippingAddressSection: React.FC<ShippingAddressSectionProps> = ({
+export const ShippingAddressSection = memo<ShippingAddressSectionProps>(({
   formData,
   errors,
   onChange,
@@ -78,4 +78,6 @@ export const ShippingAddressSection: React.FC<ShippingAddressSectionProps> = ({
       />
     </div>
   );
-};
+});
+
+ShippingAddressSection.displayName = 'ShippingAddressSection';

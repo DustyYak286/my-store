@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, memo, useCallback } from "react";
 import { ShoppingCart, X, Plus, Minus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCart, CartItem } from "@/context/CartContext";
@@ -16,11 +16,34 @@ interface CartItemProps {
   onRemove: (id: string) => void;
 }
 
-// Extracted cart item component for better readability
-const CartItemRow = ({ item, onUpdateQuantity, onRemove }: CartItemProps) => {
-  const hasDiscount = item.price.discount && item.price.discount < item.price.original;
-  const discountedPrice = item.price.discount ?? item.price.original;
-  const percentOff = hasDiscount ? getPercentageOff(item.price.original, item.price.discount!) : 0;
+// Memoized cart item component for optimal performance
+// Re-renders only when item properties or callbacks change
+const CartItemRow = memo<CartItemProps>(({ item, onUpdateQuantity, onRemove }) => {
+  // Memoize expensive price calculations to prevent recalculation on every render
+  const priceDetails = useMemo(() => {
+    const hasDiscount = item.price.discount && item.price.discount < item.price.original;
+    const discountedPrice = item.price.discount ?? item.price.original;
+    const percentOff = hasDiscount ? getPercentageOff(item.price.original, item.price.discount!) : 0;
+    
+    return { hasDiscount, discountedPrice, percentOff };
+  }, [item.price.discount, item.price.original]);
+
+  // Memoize event handlers to prevent child re-renders
+  const handleIncrement = useCallback(() => {
+    onUpdateQuantity(item.id, item.quantity + 1);
+  }, [item.id, item.quantity, onUpdateQuantity]);
+
+  const handleDecrement = useCallback(() => {
+    if (item.quantity > 1) {
+      onUpdateQuantity(item.id, item.quantity - 1);
+    }
+  }, [item.id, item.quantity, onUpdateQuantity]);
+
+  const handleRemove = useCallback(() => {
+    onRemove(item.id);
+  }, [item.id, onRemove]);
+
+  const { hasDiscount, discountedPrice, percentOff } = priceDetails;
 
   return (
     <div className="flex items-center gap-3 py-3 border-b border-gray-200 last:border-b-0">
@@ -59,7 +82,7 @@ const CartItemRow = ({ item, onUpdateQuantity, onRemove }: CartItemProps) => {
         {/* Quantity Controls */}
         <div className="flex items-center gap-2 mt-2">
           <button
-            onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+            onClick={handleDecrement}
             className="w-6 h-6 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full text-[#7C4D59] transition-colors"
             aria-label="Decrease quantity"
           >
@@ -71,7 +94,7 @@ const CartItemRow = ({ item, onUpdateQuantity, onRemove }: CartItemProps) => {
           </span>
           
           <button
-            onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+            onClick={handleIncrement}
             className="w-6 h-6 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full text-[#7C4D59] transition-colors"
             aria-label="Increase quantity"
           >
@@ -79,7 +102,7 @@ const CartItemRow = ({ item, onUpdateQuantity, onRemove }: CartItemProps) => {
           </button>
           
           <button
-            onClick={() => onRemove(item.id)}
+            onClick={handleRemove}
             className="ml-2 w-6 h-6 flex items-center justify-center bg-red-100 hover:bg-red-200 rounded-full text-red-600 transition-colors"
             aria-label="Remove item"
           >
@@ -96,7 +119,10 @@ const CartItemRow = ({ item, onUpdateQuantity, onRemove }: CartItemProps) => {
       </div>
     </div>
   );
-};
+});
+
+// Add display name for debugging
+CartItemRow.displayName = 'CartItemRow';
 
 const CartModal = ({ open, onClose }: CartModalProps) => {
   const router = useRouter();
