@@ -1,16 +1,10 @@
 // Checkout Form Configuration
 // This file centralizes all configurable values for the checkout form
-// Now uses type-safe environment variables for better reliability
+// Uses type-safe environment variables with consistent access patterns
 
-import { env, TypedEnvironment, validateEnvironmentSafe, isDevelopment } from "@/utils/envValidation";
+import { env, validateEnvironmentSafe, isDevelopment, parseCountries } from "@/utils/envValidation";
 
 export interface CheckoutConfig {
-  // Form Configuration
-  countries: string[];
-  defaultSameAsShipping: boolean;
-  processingDelay: number;
-  redirectDelay: number;
-
   // Validation Configuration
   validation: {
     emailRegex: RegExp;
@@ -40,10 +34,12 @@ export interface CheckoutConfig {
     orderError: string;
     formIncomplete: string;
   };
-}
 
-// NOTE: Helper functions have been moved to envValidation.ts for better organization
-// and to eliminate code duplication. The typed environment provides all parsed values.
+  // Form Configuration (non-hydration sensitive)
+  defaultSameAsShipping: boolean;
+  processingDelay: number;
+  redirectDelay: number;
+}
 
 // Validate environment variables (non-blocking in production)
 const envValidation = validateEnvironmentSafe();
@@ -53,11 +49,14 @@ if (isDevelopment() && envValidation.warnings.length > 0) {
   console.log('🔧 Development mode: Environment variable warnings detected');
 }
 
-// Configuration object - now uses type-safe environment variables
-// This eliminates code duplication and provides better type safety
+/**
+ * Checkout configuration object with type-safe environment variables
+ * 
+ * Note: Countries are handled directly in components to avoid SSR hydration issues
+ * since they depend on environment variables that may change between server and client
+ */
 export const checkoutConfig: CheckoutConfig = {
   // Direct mapping from typed environment - no manual parsing needed!
-  countries: env.checkout.countries,
   defaultSameAsShipping: env.checkout.defaultSameAsShipping,
   processingDelay: env.checkout.processingDelay,
   redirectDelay: env.checkout.redirectDelay,
@@ -69,7 +68,6 @@ export const checkoutConfig: CheckoutConfig = {
 
 // Export individual config sections for easier import
 export const {
-  countries,
   defaultSameAsShipping,
   processingDelay,
   redirectDelay,
@@ -77,4 +75,24 @@ export const {
   ui,
   features,
   messages,
-} = checkoutConfig; 
+} = checkoutConfig;
+
+/**
+ * Utility function to get countries from environment variable
+ * Use this in components that need country lists to ensure consistency
+ * Uses shared parsing logic to eliminate redundancy
+ * 
+ * @param fallback - Optional fallback countries list
+ * @returns Array of country names
+ */
+export const getCountriesFromEnv = (fallback?: string[]): string[] => {
+  // Use shared parsing function with optional custom fallback
+  const countries = parseCountries(process.env.NEXT_PUBLIC_CHECKOUT_COUNTRIES);
+  
+  // If a custom fallback is provided and no env var is set, use the fallback
+  if (!process.env.NEXT_PUBLIC_CHECKOUT_COUNTRIES && fallback) {
+    return fallback;
+  }
+  
+  return countries;
+}; 

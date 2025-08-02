@@ -24,7 +24,7 @@ export interface InputFieldProps extends BaseComponentProps {
   value: string
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
-  error?: string
+  error?: string | undefined
   placeholder?: string
   required?: boolean
   disabled?: boolean
@@ -39,7 +39,7 @@ export interface SelectFieldProps extends BaseComponentProps {
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void
   onBlur?: (e: React.FocusEvent<HTMLSelectElement>) => void
   options: string[]
-  error?: string
+  error?: string | undefined
   required?: boolean
   disabled?: boolean
   placeholder?: string

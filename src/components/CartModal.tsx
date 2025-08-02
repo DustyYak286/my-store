@@ -1,7 +1,10 @@
 import React, { useState, useMemo, memo, useCallback } from "react";
 import { ShoppingCart, X, Plus, Minus, Trash2 } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCart, CartItem } from "@/context/CartContext";
+import { useCart } from "@/context/CartContext";
+import type { CartItem } from "@/types/cart";
+import type { ID } from "@/types/common";
 import { useCartTotals, getPercentageOff } from "@/hooks/useCartTotals";
 import { formatPrice } from "@/utils/formatPrice";
 
@@ -12,8 +15,8 @@ interface CartModalProps {
 
 interface CartItemProps {
   item: CartItem;
-  onUpdateQuantity: (id: string, quantity: number) => void;
-  onRemove: (id: string) => void;
+  onUpdateQuantity: (id: ID, quantity: number) => void;
+  onRemove: (id: ID) => void;
 }
 
 // Memoized cart item component for optimal performance
@@ -49,10 +52,14 @@ const CartItemRow = memo<CartItemProps>(({ item, onUpdateQuantity, onRemove }) =
     <div className="flex items-center gap-3 py-3 border-b border-gray-200 last:border-b-0">
       {/* Product Image */}
       <div className="flex-shrink-0">
-        <img 
+        <Image 
           src={item.image} 
           alt={item.name}
-          className="w-16 h-16 object-cover rounded-md"
+          width={64}
+          height={64}
+          className="object-cover rounded-md"
+          sizes="64px"
+          priority={false}
         />
       </div>
       

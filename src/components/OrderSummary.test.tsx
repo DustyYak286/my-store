@@ -137,11 +137,11 @@ describe("OrderSummary", () => {
     it("renders product images with proper attributes", () => {
       render(<OrderSummary />);
 
-      // Images now have proper alt text, so use getByRole("img")
+      // Images now have proper alt text, so use getByRole("img") - Next.js optimized
       const images = screen.getAllByRole("img");
       expect(images).toHaveLength(2);
-      expect(images[0]).toHaveAttribute("src", "/test-image.jpg");
-      expect(images[1]).toHaveAttribute("src", "/test-image-2.jpg");
+      expect(images[0].getAttribute("src")).toContain("%2Ftest-image.jpg");
+      expect(images[1].getAttribute("src")).toContain("%2Ftest-image-2.jpg");
     });
   });
 
@@ -247,17 +247,18 @@ describe("OrderSummary", () => {
       const container = document.querySelector('.bg-white.rounded-lg');
       expect(container).toHaveClass("bg-white", "rounded-lg");
 
-      // Check for responsive image container
+      // Check for responsive image container - Next.js Image uses width/height props
       const image = screen.getByRole("img", { name: "Test Product" });
-      expect(image).toHaveClass("w-16", "h-16");
+      expect(image).toHaveClass("object-cover", "rounded-md", "flex-shrink-0");
     });
 
     it("has responsive image sizes", () => {
       render(<OrderSummary />);
 
-      // Images now have proper alt text, so use getByRole("img")
+      // Images now use Next.js Image with proper dimensions via props
       const image = screen.getByRole("img", { name: "Test Product" });
-      expect(image).toHaveClass("w-16", "h-16");
+      expect(image).toHaveClass("object-cover", "rounded-md", "flex-shrink-0");
+      // Next.js Image component handles width/height via props, not CSS classes
     });
   });
 }); 

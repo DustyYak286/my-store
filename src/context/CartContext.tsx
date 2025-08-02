@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from "react";
 import { CART_STORAGE_KEY } from "@/constants/storage";
 import type { CartItem } from "@/types/cart";
 import type { ID } from "@/types/common";
@@ -10,8 +10,8 @@ interface CartContextType {
   cartCount: number;
   totalPrice: number;
   addToCart: (item: CartItem, quantity: number) => void;
-  removeFromCart: (itemId: string) => void;
-  updateItemQuantity: (itemId: string, newQuantity: number) => void;
+  removeFromCart: (itemId: ID) => void;
+  updateItemQuantity: (itemId: ID, newQuantity: number) => void;
   clearCart: () => void;
 }
 
@@ -83,7 +83,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   );
 
   // Add items to cart - adds new item or updates quantity if it already exists
-  const addToCart = (item: CartItem, quantity: number) => {
+  const addToCart = useCallback((item: CartItem, quantity: number) => {
     // Validate item data
     if (!item || !item.price || typeof item.price.original !== 'number' || item.price.original < 0) {
       console.error('Invalid item data:', item);
@@ -113,15 +113,15 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         return [...prevItems, newItem];
       }
     });
-  };
+  }, []); // No dependencies needed since we use functional updates
 
   // Remove item completely from cart
-  const removeFromCart = (itemId: string) => {
+  const removeFromCart = useCallback((itemId: ID) => {
     setCartItems((prevItems) => prevItems.filter(item => item.id !== itemId));
-  };
+  }, []);
 
   // Update quantity of a specific item
-  const updateItemQuantity = (itemId: string, newQuantity: number) => {
+  const updateItemQuantity = useCallback((itemId: ID, newQuantity: number) => {
     if (newQuantity <= 0) {
       // If quantity is 0 or negative, remove the item
       removeFromCart(itemId);
@@ -135,24 +135,27 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           : item
       )
     );
-  };
+  }, [removeFromCart]);
 
   // Clear all items from cart
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setCartItems([]);
-  };
+  }, []);
+
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    cartItems, 
+    cartCount, 
+    totalPrice,
+    addToCart, 
+    removeFromCart, 
+    updateItemQuantity, 
+    clearCart 
+  }), [cartItems, cartCount, totalPrice, addToCart, removeFromCart, updateItemQuantity, clearCart]);
 
   // Provide all cart functions and state to consumers
   return (
-    <CartContext.Provider value={{ 
-      cartItems, 
-      cartCount, 
-      totalPrice,
-      addToCart, 
-      removeFromCart, 
-      updateItemQuantity, 
-      clearCart 
-    }}>
+    <CartContext.Provider value={contextValue}>
       {children}
     </CartContext.Provider>
   );

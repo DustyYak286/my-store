@@ -1,7 +1,10 @@
 "use client";
 
 import React, { memo, useMemo, useCallback } from "react";
-import { useCart, CartItem } from "@/context/CartContext";
+import Image from "next/image";
+import { useCart } from "@/context/CartContext";
+import type { CartItem } from "@/types/cart";
+import type { ID } from "@/types/common";
 import { useCartTotals, getPercentageOff } from "@/hooks/useCartTotals";
 import { formatPrice } from "@/utils/formatPrice";
 import { Plus, Minus, Trash2 } from "lucide-react";
@@ -9,8 +12,8 @@ import { Plus, Minus, Trash2 } from "lucide-react";
 // Memoized order item component for optimal performance
 interface OrderItemProps {
   item: CartItem;
-  onUpdateQuantity: (id: string, quantity: number) => void;
-  onRemove: (id: string) => void;
+  onUpdateQuantity: (id: ID, quantity: number) => void;
+  onRemove: (id: ID) => void;
 }
 
 const OrderItem = memo<OrderItemProps>(({ item, onUpdateQuantity, onRemove }) => {
@@ -42,10 +45,14 @@ const OrderItem = memo<OrderItemProps>(({ item, onUpdateQuantity, onRemove }) =>
 
   return (
     <div className="flex items-center gap-4 p-4 border border-gray-100 rounded-lg">
-      <img 
+      <Image 
         src={item.image} 
         alt={item.name}
-        className="w-16 h-16 object-cover rounded-md flex-shrink-0"
+        width={64}
+        height={64}
+        className="object-cover rounded-md flex-shrink-0"
+        sizes="64px"
+        priority={false}
       />
       
       <div className="flex-1 min-w-0">

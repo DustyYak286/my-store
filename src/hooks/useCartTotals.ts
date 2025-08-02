@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { useCart, CartItem } from "@/context/CartContext";
+import { useCart } from "@/context/CartContext";
+import type { CartItem } from "@/types/cart";
 
 interface CartTotals {
   original: number;

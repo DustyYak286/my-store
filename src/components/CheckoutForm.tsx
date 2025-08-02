@@ -5,7 +5,7 @@ import { useCheckoutForm } from "@/hooks/useCheckoutForm";
 import { ContactInfoSection } from "@/components/checkout/ContactInfoSection";
 import { ShippingAddressSection } from "@/components/checkout/ShippingAddressSection";
 import { BillingAddressSection } from "@/components/checkout/BillingAddressSection";
-import { checkoutConfig } from "@/config/checkout";
+import { checkoutConfig, getCountriesFromEnv } from "@/config/checkout";
 import Toast from "./Toast";
 import { useToast } from "@/hooks/useToast";
 
@@ -32,8 +32,8 @@ export default function CheckoutForm() {
     handleSubmit
   } = useCheckoutForm();
 
-  // Get countries from configuration
-  const countries = checkoutConfig.countries;
+  // Get countries using utility function for consistent SSR/client rendering
+  const countries = getCountriesFromEnv();
 
   return (
     <>

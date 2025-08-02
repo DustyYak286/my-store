@@ -15,6 +15,17 @@
 const path = require('path');
 const fs = require('fs');
 
+// Load environment variables FIRST, before any module imports
+const dotenv = require('dotenv');
+const envPath = path.join(__dirname, '..', '.env.local');
+
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+  console.log('📄 Loaded .env.local file');
+} else {
+  console.log('📄 No .env.local file found (using system environment)');
+}
+
 // Add src directory to require path for TypeScript compilation
 const tsNode = require('ts-node');
 
@@ -28,7 +39,7 @@ tsNode.register({
   }
 });
 
-// Now we can import TypeScript modules
+// Now we can import TypeScript modules - env vars are already loaded
 const { 
   validateEnvironmentSafe, 
   generateEnvExample,
@@ -45,17 +56,6 @@ async function validateEnvironment() {
   const strictMode = args.includes('--strict') || args.includes('-s');
   
   console.log(`🔍 Starting environment variable validation${strictMode ? ' (STRICT MODE)' : ''}...\n`);
-  
-  // Load environment variables
-  const dotenv = require('dotenv');
-  const envPath = path.join(__dirname, '..', '.env.local');
-  
-  if (fs.existsSync(envPath)) {
-    dotenv.config({ path: envPath });
-    console.log('📄 Loaded .env.local file');
-  } else {
-    console.log('📄 No .env.local file found (using system environment)');
-  }
 
   // Perform validation with strict mode if requested
   // Use validateEnvironmentSafe which already handles logging

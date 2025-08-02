@@ -168,6 +168,41 @@ const ENV_SCHEMAS: EnvValidationSchema[] = [
   },
 ];
 
+// ====== SHARED PARSING UTILITIES ======
+
+/**
+ * Shared parsing functions to eliminate redundancy between validation and typed environment creation
+ */
+export const parseBoolean = (value: string | undefined, defaultValue: boolean): boolean => {
+  if (!value) return defaultValue;
+  return value.toLowerCase() === 'true';
+};
+
+export const parseNumber = (value: string | undefined, defaultValue: number): number => {
+  if (!value) return defaultValue;
+  const parsed = parseInt(value, 10);
+  return isNaN(parsed) ? defaultValue : parsed;
+};
+
+export const parseCountries = (value: string | undefined): string[] => {
+  if (!value) {
+    return [
+      "United States", "Canada", "United Kingdom", "Australia", "Germany", 
+      "France", "Italy", "Spain", "Netherlands", "Belgium", "Other"
+    ];
+  }
+  return value.split(',').map(country => country.trim());
+};
+
+export const createRegex = (value: string | undefined, defaultPattern: string): RegExp => {
+  if (!value) return new RegExp(defaultPattern);
+  try {
+    return new RegExp(value);
+  } catch {
+    return new RegExp(defaultPattern);
+  }
+};
+
 // ====== VALIDATORS ======
 
 const validateString = (value: string, schema: EnvValidationSchema): ValidationResult<string> => {
@@ -187,7 +222,7 @@ const validateString = (value: string, schema: EnvValidationSchema): ValidationR
 };
 
 const validateNumber = (value: string, schema: EnvValidationSchema): ValidationResult<number> => {
-  const num = parseInt(value, 10);
+  const num = parseNumber(value, NaN); // Use shared parser
   if (isNaN(num)) {
     return { success: false, error: 'Must be a valid number' };
   }
@@ -203,13 +238,14 @@ const validateNumber = (value: string, schema: EnvValidationSchema): ValidationR
 const validateBoolean = (value: string): ValidationResult<boolean> => {
   const lower = value.toLowerCase();
   if (lower === 'true' || lower === 'false') {
-    return { success: true, data: lower === 'true' };
+    return { success: true, data: parseBoolean(value, false) }; // Use shared parser
   }
   return { success: false, error: 'Must be "true" or "false"' };
 };
 
 const validateRegex = (value: string): ValidationResult<RegExp> => {
   try {
+    // Use the same regex creation logic as shared parser for consistency
     const regex = new RegExp(value);
     return { success: true, data: regex };
   } catch (error) {
@@ -226,6 +262,7 @@ const validateColor = (value: string): ValidationResult<string> => {
 };
 
 const validateArray = (value: string): ValidationResult<string[]> => {
+  // Use similar logic to parseCountries but with validation
   const items = value.split(',').map(item => item.trim()).filter(item => item.length > 0);
   if (items.length === 0) {
     return { success: false, error: 'Must contain at least one item' };
@@ -570,38 +607,9 @@ export const createTypedEnvironment = (
     );
   }
 
-  // Helper parsers (reuse existing logic)
-  const parseBoolean = (value: string | undefined, defaultValue: boolean): boolean => {
-    if (!value) return defaultValue;
-    return value.toLowerCase() === 'true';
-  };
+  // Reuse validation parsing logic to eliminate redundancy
 
-  const parseNumber = (value: string | undefined, defaultValue: number): number => {
-    if (!value) return defaultValue;
-    const parsed = parseInt(value, 10);
-    return isNaN(parsed) ? defaultValue : parsed;
-  };
-
-  const parseCountries = (value: string | undefined): string[] => {
-    if (!value) {
-      return [
-        "United States", "Canada", "United Kingdom", "Australia", "Germany", 
-        "France", "Italy", "Spain", "Netherlands", "Belgium", "Other"
-      ];
-    }
-    return value.split(',').map(country => country.trim());
-  };
-
-  const createRegex = (value: string | undefined, defaultPattern: string): RegExp => {
-    if (!value) return new RegExp(defaultPattern);
-    try {
-      return new RegExp(value);
-    } catch {
-      return new RegExp(defaultPattern);
-    }
-  };
-
-  // Create the typed environment object
+  // Create the typed environment object using shared parsing functions
   return {
     checkout: {
       countries: parseCountries(env.NEXT_PUBLIC_CHECKOUT_COUNTRIES),
@@ -664,4 +672,9 @@ export const getTypedEnvironment = (forceRefresh: boolean = false): TypedEnviron
  * const countries = env.checkout.countries;  // Type-safe!
  * ```
  */
-export const env = getTypedEnvironment();
+export const env = new Proxy({} as TypedEnvironment, {
+  get(target, prop) {
+    // Directly call getTypedEnvironment which handles its own caching
+    return getTypedEnvironment()[prop as keyof TypedEnvironment];
+  }
+});
