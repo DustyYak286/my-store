@@ -1,7 +1,55 @@
 "use client";
 
-import OrderSummary from "@/components/OrderSummary";
-import CheckoutForm from "@/components/CheckoutForm";
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
+import { LazyLoadErrorBoundary } from "@/components/LazyLoadErrorBoundary";
+
+const OrderSummary = dynamic(() => import("@/components/OrderSummary"), {
+  loading: () => <OrderSummarySkeleton />,
+  ssr: false
+});
+
+const CheckoutForm = dynamic(() => import("@/components/CheckoutForm"), {
+  loading: () => <CheckoutFormSkeleton />,
+  ssr: false
+});
+
+function OrderSummarySkeleton() {
+  return (
+    <div className="animate-pulse space-y-4">
+      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+      <div className="space-y-2">
+        <div className="h-16 bg-gray-200 rounded"></div>
+        <div className="h-16 bg-gray-200 rounded"></div>
+      </div>
+      <div className="space-y-2 pt-4 border-t">
+        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        <div className="h-6 bg-gray-200 rounded w-2/3"></div>
+      </div>
+    </div>
+  );
+}
+
+function CheckoutFormSkeleton() {
+  return (
+    <div className="animate-pulse space-y-6">
+      <div className="space-y-4">
+        <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+        <div className="h-10 bg-gray-200 rounded"></div>
+        <div className="h-10 bg-gray-200 rounded"></div>
+      </div>
+      <div className="space-y-4">
+        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="h-10 bg-gray-200 rounded"></div>
+          <div className="h-10 bg-gray-200 rounded"></div>
+        </div>
+        <div className="h-10 bg-gray-200 rounded"></div>
+      </div>
+      <div className="h-12 bg-gray-200 rounded"></div>
+    </div>
+  );
+}
 
 export default function CheckoutPage() {
   return (
@@ -31,7 +79,11 @@ export default function CheckoutPage() {
               </h2>
             </div>
             <div className="p-4 lg:p-6">
-              <OrderSummary />
+              <Suspense fallback={<OrderSummarySkeleton />}>
+                <LazyLoadErrorBoundary componentName="OrderSummary" fallback={<OrderSummarySkeleton />}>
+                  <OrderSummary />
+                </LazyLoadErrorBoundary>
+              </Suspense>
             </div>
           </div>
           
@@ -51,7 +103,11 @@ export default function CheckoutPage() {
               </h2>
             </div>
             <div className="p-4 lg:p-6">
-              <CheckoutForm />
+              <Suspense fallback={<CheckoutFormSkeleton />}>
+                <LazyLoadErrorBoundary componentName="CheckoutForm" fallback={<CheckoutFormSkeleton />}>
+                  <CheckoutForm />
+                </LazyLoadErrorBoundary>
+              </Suspense>
             </div>
           </div>
         </div>

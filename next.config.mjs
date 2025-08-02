@@ -1,6 +1,41 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async headers() {
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // Base CSP directives
+    const cspDirectives = {
+      'default-src': ["'self'"],
+      'script-src': ["'self'"],
+      'style-src': ["'self'", 'fonts.googleapis.com'],
+      'font-src': ["'self'", 'fonts.gstatic.com'],
+      'img-src': ["'self'", 'data:', 'blob:'],
+      'connect-src': ["'self'"],
+      'frame-ancestors': ["'none'"],
+      'base-uri': ["'self'"],
+      'form-action': ["'self'"],
+      'object-src': ["'none'"],
+      'media-src': ["'self'"],
+      'worker-src': ["'self'"],
+      'manifest-src': ["'self'"],
+    };
+
+    // Environment-specific CSP adjustments
+    if (isDevelopment) {
+      cspDirectives['script-src'].push("'unsafe-inline'", "'unsafe-eval'");
+      cspDirectives['style-src'].push("'unsafe-inline'");
+      cspDirectives['connect-src'].push('ws:', 'wss:'); // HMR support
+    } else {
+      // Production: Allow inline styles for Tailwind but restrict scripts
+      cspDirectives['style-src'].push("'unsafe-inline'");
+      cspDirectives['script-src'].push("'unsafe-inline'"); // Minimal for Next.js
+    }
+
+    const csp = Object.entries(cspDirectives)
+      .map(([directive, sources]) => `${directive} ${sources.join(' ')}`)
+      .join('; ');
+
     return [
       {
         // Apply security headers to all routes
@@ -16,43 +51,74 @@ const nextConfig = {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
           },
-          // Control referrer information
+          // Control referrer information (stricter)
           {
             key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin',
+            value: 'strict-origin-when-cross-origin',
           },
           // Prevent XSS attacks in older browsers
           {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
           },
-          // Content Security Policy for e-commerce security
-          // Allows Google Fonts, self-hosted content, and inline styles (needed for Tailwind)
+          // Enhanced Content Security Policy
           {
             key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js requires unsafe-inline/eval in dev
-              "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
-              "font-src 'self' fonts.gstatic.com",
-              "img-src 'self' data: blob:",
-              "connect-src 'self'",
-              "frame-ancestors 'none'", // Same as X-Frame-Options but for modern browsers
-            ].join('; '),
+            value: csp,
           },
-          // Permissions Policy (formerly Feature Policy)
-          // Restrict access to sensitive browser features
+          // Enhanced Permissions Policy
           {
             key: 'Permissions-Policy',
             value: [
-              'geolocation=()',
-              'microphone=()',
+              'accelerometer=()',
+              'ambient-light-sensor=()',
+              'autoplay=()',
+              'battery=()',
               'camera=()',
-              'payment=(self)', // Allow payment APIs for e-commerce
-              'fullscreen=(self)',
+              'cross-origin-isolated=()',
               'display-capture=()',
+              'document-domain=()',
+              'encrypted-media=()',
+              'execution-while-not-rendered=()',
+              'execution-while-out-of-viewport=()',
+              'fullscreen=(self)',
+              'geolocation=()',
+              'gyroscope=()',
+              'keyboard-map=()',
+              'magnetometer=()',
+              'microphone=()',
+              'midi=()',
+              'navigation-override=()',
+              'payment=(self)',
+              'picture-in-picture=()',
+              'publickey-credentials-get=()',
+              'screen-wake-lock=()',
+              'sync-xhr=()',
+              'usb=()',
+              'web-share=()',
+              'xr-spatial-tracking=()',
             ].join(', '),
           },
+          // Cross-Origin Embedder Policy (COEP)
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'unsafe-none', // Required for compatibility
+          },
+          // Cross-Origin Opener Policy (COOP)
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+          // Cross-Origin Resource Policy (CORP)
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-origin',
+          },
+          // Strict Transport Security (production only)
+          ...(isProduction ? [{
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          }] : []),
         ],
       },
       {

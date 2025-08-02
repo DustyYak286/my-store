@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 
 interface ToastState {
   message: string;
@@ -35,9 +35,9 @@ export const useToast = (): UseToastReturn => {
     }));
   }, []);
 
-  return {
+  return useMemo(() => ({
     toast,
     showToast,
     hideToast,
-  };
+  }), [toast, showToast, hideToast]);
 }; 

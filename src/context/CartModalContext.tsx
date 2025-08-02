@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useMemo, useCallback, ReactNode } from "react";
 
 interface CartModalContextType {
   isCartOpen: boolean;
@@ -12,11 +12,17 @@ const CartModalContext = createContext<CartModalContextType | undefined>(undefin
 export const CartModalProvider = ({ children }: { children: ReactNode }) => {
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  const openCart = () => setIsCartOpen(true);
-  const closeCart = () => setIsCartOpen(false);
+  const openCart = useCallback(() => setIsCartOpen(true), []);
+  const closeCart = useCallback(() => setIsCartOpen(false), []);
+
+  const contextValue = useMemo(() => ({
+    isCartOpen,
+    openCart,
+    closeCart
+  }), [isCartOpen, openCart, closeCart]);
 
   return (
-    <CartModalContext.Provider value={{ isCartOpen, openCart, closeCart }}>
+    <CartModalContext.Provider value={contextValue}>
       {children}
     </CartModalContext.Provider>
   );

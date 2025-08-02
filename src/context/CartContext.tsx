@@ -143,6 +143,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   // Memoize context value to prevent unnecessary re-renders
+  // Functions are stable due to useCallback, but included for explicit dependencies
   const contextValue = useMemo(() => ({
     cartItems, 
     cartCount, 
