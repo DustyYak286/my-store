@@ -45,14 +45,14 @@
 
 ## Tasks
 
-- [ ] 1.0 Environment Setup & Stripe Dependencies
-  - [ ] 1.1 Install Stripe dependencies (@stripe/stripe-js, stripe, @stripe/react-stripe-js)
-  - [ ] 1.2 Add specific Stripe environment variables to validation schema (STRIPE_PUBLISHABLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
-  - [ ] 1.3 Create payment constants file with currency, limits, and retry settings
-  - [ ] 1.4 Create Stripe configuration file with environment variable integration
-  - [ ] 1.5 Set up client and server-side Stripe instances with proper error handling
-  - [ ] 1.6 Install and configure Stripe CLI for local webhook testing
-  - [ ] 1.7 Write unit tests for Stripe configuration and instances
+- [x] 1.0 Environment Setup & Stripe Dependencies
+  - [x] 1.1 Install Stripe dependencies (@stripe/stripe-js, stripe, @stripe/react-stripe-js)
+  - [x] 1.2 Add specific Stripe environment variables to validation schema (NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  - [x] 1.3 Create payment constants file with currency, limits, and retry settings
+  - [x] 1.4 Create Stripe configuration file with environment variable integration
+  - [x] 1.5 Set up client and server-side Stripe instances with proper error handling
+  - [x] 1.6 Install and configure Stripe CLI for local webhook testing
+  - [x] 1.7 Write unit tests for Stripe configuration and instances
 
 - [ ] 2.0 Server-Side Payment API Infrastructure
   - [ ] 2.1 Create order management system with TypeScript enums for status tracking (pending/paid/failed/cancelled)

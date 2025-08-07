@@ -166,6 +166,32 @@ const ENV_SCHEMAS: EnvValidationSchema[] = [
     max: 200,
     description: 'Form incomplete message (1-200 characters)',
   },
+
+  // === Payment Configuration ===
+  {
+    key: 'STRIPE_SECRET_KEY',
+    category: 'Payment',
+    required: true,
+    type: 'string',
+    pattern: /^sk_(test|live)_[a-zA-Z0-9]{24,}$/,
+    description: 'Stripe secret key (server-side) - must start with sk_test_ or sk_live_',
+  },
+  {
+    key: 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
+    category: 'Payment',
+    required: true,
+    type: 'string',
+    pattern: /^pk_(test|live)_[a-zA-Z0-9]{24,}$/,
+    description: 'Stripe publishable key (client-side) - must start with pk_test_ or pk_live_',
+  },
+  {
+    key: 'STRIPE_WEBHOOK_SECRET',
+    category: 'Payment',
+    required: true,
+    type: 'string',
+    pattern: /^whsec_[a-zA-Z0-9]{24,}$/,
+    description: 'Stripe webhook secret for signature verification - must start with whsec_',
+  },
 ];
 
 // ====== SHARED PARSING UTILITIES ======
@@ -508,7 +534,15 @@ export const generateEnvExample = (): string => {
           exampleValue = '^[^\\\\s@]+@[^\\\\s@]+\\\\.[^\\\\s@]+$';
           break;
         default:
-          exampleValue = 'Your value here';
+          if (schema.key.includes('STRIPE_SECRET_KEY')) {
+            exampleValue = 'sk_test_...your_stripe_secret_key';
+          } else if (schema.key.includes('STRIPE_PUBLISHABLE_KEY')) {
+            exampleValue = 'pk_test_...your_stripe_publishable_key';
+          } else if (schema.key.includes('STRIPE_WEBHOOK_SECRET')) {
+            exampleValue = 'whsec_...your_webhook_secret';
+          } else {
+            exampleValue = 'Your value here';
+          }
       }
       
       lines.push(`${schema.key}="${exampleValue}"`);
@@ -577,6 +611,13 @@ export interface TypedEnvironment {
     orderError: string;
     formIncomplete: string;
   };
+
+  // Payment Configuration
+  payment: {
+    stripeSecretKey: string;
+    stripePublishableKey: string;
+    stripeWebhookSecret: string;
+  };
 }
 
 /**
@@ -642,6 +683,12 @@ export const createTypedEnvironment = (
       orderSuccess: env.NEXT_PUBLIC_MESSAGE_ORDER_SUCCESS || 'Thank you for your order!',
       orderError: env.NEXT_PUBLIC_MESSAGE_ORDER_ERROR || 'Something went wrong. Please try again.',
       formIncomplete: env.NEXT_PUBLIC_MESSAGE_FORM_INCOMPLETE || 'Please fill in all required fields to place your order',
+    },
+
+    payment: {
+      stripeSecretKey: env.STRIPE_SECRET_KEY!,
+      stripePublishableKey: env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
+      stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET!,
     },
   };
 };

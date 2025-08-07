@@ -51,10 +51,29 @@ The checkout form uses environment variables to allow flexible configuration wit
 | `NEXT_PUBLIC_MESSAGE_ORDER_ERROR` | `"Something went wrong. Please try again."` | Error message |
 | `NEXT_PUBLIC_MESSAGE_FORM_INCOMPLETE` | `"Please fill in all required fields to place your order"` | Form validation message |
 
+### 💳 Payment Configuration (Stripe)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `STRIPE_SECRET_KEY` | **Yes** | Stripe secret key (server-side) - starts with `sk_test_` or `sk_live_` |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | **Yes** | Stripe publishable key (client-side) - starts with `pk_test_` or `pk_live_` |
+| `STRIPE_WEBHOOK_SECRET` | **Yes** | Stripe webhook secret for signature verification - starts with `whsec_` |
+
+**Security Note:** 
+- Secret keys must NEVER be exposed to the browser (no `NEXT_PUBLIC_` prefix)
+- Publishable keys are safe for client-side use
+- Use test keys (`sk_test_`, `pk_test_`) for development
+- Use live keys (`sk_live_`, `pk_live_`) only in production
+
 ## Usage Examples
 
 ### Development (.env.local)
 ```bash
+# Stripe Payment Configuration (REQUIRED)
+STRIPE_SECRET_KEY=sk_test_51...your_test_secret_key
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51...your_test_publishable_key
+STRIPE_WEBHOOK_SECRET=whsec_...your_webhook_secret_from_stripe_listen
+
 # Custom country list for European market
 NEXT_PUBLIC_CHECKOUT_COUNTRIES="Germany,France,Italy,Spain,Netherlands,Belgium,Austria,Switzerland"
 
