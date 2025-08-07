@@ -1,5 +1,4 @@
 import { headers } from "next/headers";
-import crypto from "crypto";
 
 /**
  * Security utilities for enhanced protection
