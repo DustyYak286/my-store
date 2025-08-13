@@ -54,15 +54,15 @@
   - [x] 1.6 Install and configure Stripe CLI for local webhook testing
   - [x] 1.7 Write unit tests for Stripe configuration and instances
 
-- [ ] 2.0 Server-Side Payment API Infrastructure
-  - [ ] 2.1 Create order management system with TypeScript enums for status tracking (pending/paid/failed/cancelled)
-  - [ ] 2.2 Create payment intent creation API route with idempotency keys and order creation
-  - [ ] 2.3 Include orderId and metadata in Payment Intent for webhook processing
-  - [ ] 2.4 Implement payment amount validation (min 2.50 RON, max 4,999,999 RON) and RON currency enforcement
-  - [ ] 2.5 Implement secure API validation, sanitization, and rate limiting protection
-  - [ ] 2.6 Add comprehensive logging, monitoring, and payment metrics tracking
-  - [ ] 2.7 Create webhook endpoint with enhanced security (signature verification, timestamp validation, deduplication)
-  - [ ] 2.8 Write comprehensive unit tests for order management and payment intent API
+- [x] 2.0 Server-Side Payment API Infrastructure
+  - [x] 2.1 Create order management system with TypeScript enums for status tracking (pending/paid/failed/cancelled)
+  - [x] 2.2 Create payment intent creation API route with idempotency keys and order creation
+  - [x] 2.3 Include orderId and metadata in Payment Intent for webhook processing
+  - [x] 2.4 Implement payment amount validation (min 2.50 RON, max 4,999,999 RON) and RON currency enforcement
+  - [x] 2.5 Implement secure API validation, sanitization, and rate limiting protection
+  - [x] 2.6 Add comprehensive logging, monitoring, and payment metrics tracking
+  - [x] 2.7 Create webhook endpoint with enhanced security (signature verification, timestamp validation, deduplication)
+  - [x] 2.8 Write comprehensive unit tests for order management and payment intent API
 
 - [ ] 3.0 Client-Side Payment Form Integration
   - [ ] 3.1 Create payment-specific error boundary component with graceful fallback UI

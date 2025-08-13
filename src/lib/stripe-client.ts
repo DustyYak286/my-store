@@ -7,8 +7,18 @@
 
 'use client';
 
-import { loadStripe, Stripe, StripeElements, StripeError } from '@stripe/stripe-js';
-import { stripeConfig, getClientStripeOptions } from '@/config/stripe';
+import { loadStripe, StripeElements, StripeError } from '@stripe/stripe-js';
+import type { Stripe, PaymentIntent } from '@stripe/stripe-js';
+import { clientStripeConfig } from '@/config/stripe-client';
+
+// Extend Window interface for Apple Pay
+declare global {
+  interface Window {
+    ApplePaySession?: {
+      canMakePayments?: () => boolean;
+    };
+  }
+}
 
 // ====== STRIPE INSTANCE ======
 
@@ -21,10 +31,10 @@ let stripePromise: Promise<Stripe | null> | null = null;
  */
 export const getStripe = async (): Promise<Stripe | null> => {
   if (!stripePromise) {
-    stripePromise = loadStripe(
-      stripeConfig.publishableKey,
-      getClientStripeOptions()
-    );
+    stripePromise = loadStripe(clientStripeConfig.publishableKey, {
+      // apiVersion: clientStripeConfig.apiVersion, // Use default API version
+      locale: clientStripeConfig.locale,
+    });
   }
   
   return stripePromise;
@@ -63,10 +73,10 @@ export const confirmPayment = async (
   }
 ): Promise<{
   success: boolean;
-  paymentIntent?: Stripe.PaymentIntent;
+  paymentIntent?: PaymentIntent;
   error?: {
     type: string;
-    code?: string;
+    code?: string | undefined;
     message: string;
     category: 'card' | 'authentication' | 'network' | 'validation' | 'unknown';
     isRetryable: boolean;
@@ -78,7 +88,7 @@ export const confirmPayment = async (
       clientSecret,
       confirmParams: {
         return_url: confirmationData?.return_url || window.location.origin + '/checkout/success',
-        payment_method_data: confirmationData?.payment_method_data,
+        ...(confirmationData?.payment_method_data && { payment_method_data: confirmationData.payment_method_data }),
       },
       redirect: 'if_required',
     });
@@ -156,10 +166,10 @@ export const handleNextAction = async (
   clientSecret: string
 ): Promise<{
   success: boolean;
-  paymentIntent?: Stripe.PaymentIntent;
+  paymentIntent?: PaymentIntent;
   error?: {
     type: string;
-    code?: string;
+    code?: string | undefined;
     message: string;
     category: string;
   };
@@ -185,7 +195,7 @@ export const handleNextAction = async (
     
     return {
       success: true,
-      paymentIntent: paymentIntent || undefined,
+      ...(paymentIntent && { paymentIntent }),
     };
     
   } catch (error) {
@@ -355,12 +365,12 @@ export const detectAvailablePaymentMethods = (): {
 export const checkApplePayAvailability = async (): Promise<boolean> => {
   try {
     // Check if Apple Pay is available on this device
-    if (!window.ApplePaySession || !ApplePaySession.canMakePayments) {
+    if (!window.ApplePaySession || !window.ApplePaySession.canMakePayments) {
       return false;
     }
     
     // Check if user has cards configured
-    return ApplePaySession.canMakePayments();
+    return window.ApplePaySession.canMakePayments();
   } catch {
     return false;
   }

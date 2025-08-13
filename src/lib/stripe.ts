@@ -43,10 +43,12 @@ export const getStripe = (): Stripe => {
 /**
  * Create a payment intent with proper error handling and logging
  * @param params Payment intent creation parameters
+ * @param options Stripe request options (idempotencyKey, stripeAccount, etc.)
  * @returns Created payment intent
  */
 export const createPaymentIntent = async (
-  params: Stripe.PaymentIntentCreateParams
+  params: Stripe.PaymentIntentCreateParams,
+  options?: Stripe.RequestOptions
 ): Promise<Stripe.PaymentIntent> => {
   const stripe = getStripe();
   
@@ -56,7 +58,7 @@ export const createPaymentIntent = async (
       environment: stripeConfig.environmentLabel,
     });
     
-    const paymentIntent = await stripe.paymentIntents.create(params);
+    const paymentIntent = await stripe.paymentIntents.create(params, options);
     
     console.log(`✅ Payment intent created: ${paymentIntent.id}`, {
       status: paymentIntent.status,
@@ -143,7 +145,8 @@ export const constructWebhookEvent = (
     const event = stripe.webhooks.constructEvent(
       payload,
       signature,
-      stripeConfig.webhookSecret
+      stripeConfig.webhookSecret,
+      stripeConfig.webhooks.tolerance
     );
     
     console.log(`✅ Webhook event verified: ${event.type}`, {
@@ -218,7 +221,8 @@ export const categorizeStripeError = (error: Stripe.errors.StripeError): {
   userMessage: string;
   logLevel: 'warn' | 'error';
 } => {
-  const { type, code } = error;
+  const type = error.type as string;
+  const code = error.code as string;
   
   // Card errors
   if (type === 'card_error') {

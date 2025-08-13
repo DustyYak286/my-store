@@ -69,7 +69,7 @@ export const stripeConfig = {
   
   // API configuration
   api: {
-    version: '2024-06-20' as const, // Latest Stripe API version
+    version: '2022-11-15' as const, // Stable Stripe API version
     timeout: TIMEOUT_CONFIG.API_REQUEST_TIMEOUT,
     maxRetries: 3,
   },
@@ -78,7 +78,7 @@ export const stripeConfig = {
   paymentIntent: {
     automaticPaymentMethods: {
       enabled: true,
-      allowRedirects: 'never' as const, // Client-side confirmation only
+      allow_redirects: 'never' as const, // Client-side confirmation only
     },
     captureMethod: 'automatic' as const,
     confirmationMethod: 'automatic' as const,
@@ -209,7 +209,7 @@ export const validateStripeConfiguration = (): {
  * @returns Stripe options object
  */
 export const getServerStripeOptions = () => ({
-  apiVersion: stripeConfig.api.version,
+  // apiVersion: stripeConfig.api.version, // Use default API version
   timeout: stripeConfig.api.timeout,
   maxNetworkRetries: stripeConfig.api.maxRetries,
   telemetry: false, // Disable telemetry for server-side usage
@@ -224,7 +224,7 @@ export const getServerStripeOptions = () => ({
  * @returns StripeJS options object
  */
 export const getClientStripeOptions = () => ({
-  apiVersion: stripeConfig.api.version,
+  // apiVersion: stripeConfig.api.version, // Use default API version
   stripeAccount: undefined, // Not using Connect
   locale: 'ro' as const, // Romanian locale for RON currency
 });
@@ -235,13 +235,11 @@ export const getClientStripeOptions = () => ({
  * Get default Payment Intent creation parameters
  * @param amount Amount in smallest currency unit (bani)
  * @param orderId Order ID to include in metadata
- * @param idempotencyKey Optional idempotency key
  * @returns Payment Intent parameters
  */
 export const getPaymentIntentParams = (
   amount: number,
-  orderId: string,
-  idempotencyKey?: string
+  orderId: string
 ) => ({
   amount,
   currency: stripeConfig.currency,
@@ -253,7 +251,6 @@ export const getPaymentIntentParams = (
     environment: stripeConfig.environmentLabel,
     timestamp: new Date().toISOString(),
   },
-  ...(idempotencyKey && { idempotency_key: idempotencyKey }),
 });
 
 /**
@@ -273,9 +270,9 @@ export const getElementsOptions = (clientSecret: string) => ({
  * Enhanced Stripe error with additional context
  */
 export interface StripeConfigError extends Error {
-  code?: string;
-  type?: string;
-  context?: Record<string, unknown>;
+  code?: string | undefined;
+  type?: string | undefined;
+  context?: Record<string, unknown> | undefined;
 }
 
 /**

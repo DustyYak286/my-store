@@ -43,3 +43,13 @@ console.error = (...args) => {
   }
   originalConsoleError(...args);
 };
+
+// Polyfill Request for route handler tests running in jsdom
+if (!(global as any).Request) {
+  try {
+    const { Request } = require('next/dist/server/web/spec-extension/request');
+    (global as any).Request = Request;
+  } catch {
+    // ignore if not available
+  }
+}

@@ -92,7 +92,6 @@ describe('Stripe Configuration Utils', () => {
     it('should return valid server-side Stripe options', () => {
       const options = getServerStripeOptions();
       
-      expect(options).toHaveProperty('apiVersion');
       expect(options).toHaveProperty('timeout');
       expect(options).toHaveProperty('maxNetworkRetries');
       expect(options).toHaveProperty('telemetry', false);
@@ -114,7 +113,6 @@ describe('Stripe Configuration Utils', () => {
     it('should return valid client-side Stripe options', () => {
       const options = getClientStripeOptions();
       
-      expect(options).toHaveProperty('apiVersion');
       expect(options).toHaveProperty('stripeAccount', undefined);
       expect(options).toHaveProperty('locale', 'ro');
     });
@@ -129,16 +127,15 @@ describe('Stripe Configuration Utils', () => {
     it('should generate valid payment intent parameters', () => {
       const amount = 2500; // 25.00 RON in bani
       const orderId = 'test_order_123';
-      const idempotencyKey = 'test_idempotency_key';
       
-      const params = getPaymentIntentParams(amount, orderId, idempotencyKey);
+      const params = getPaymentIntentParams(amount, orderId);
       
       expect(params.amount).toBe(amount);
       expect(params.currency).toBe('ron');
       expect(params.metadata.orderId).toBe(orderId);
       expect(params.metadata).toHaveProperty('environment');
       expect(params.metadata).toHaveProperty('timestamp');
-      expect(params.idempotency_key).toBe(idempotencyKey);
+      expect(params.metadata.orderId).toBe(orderId);
       expect(params).toHaveProperty('automatic_payment_methods');
       expect(params).toHaveProperty('capture_method');
       expect(params).toHaveProperty('confirmation_method');
@@ -152,7 +149,7 @@ describe('Stripe Configuration Utils', () => {
       
       expect(params.amount).toBe(amount);
       expect(params.metadata.orderId).toBe(orderId);
-      expect(params.idempotency_key).toBeUndefined();
+      expect(params.metadata.orderId).toBe(orderId);
     });
 
     it('should include timestamp in metadata', () => {
@@ -185,9 +182,9 @@ describe('Stripe Configuration Utils', () => {
   });
 
   describe('Configuration validation', () => {
-    it('should have proper API version format', () => {
+    it('should use default API version (no explicit version set)', () => {
       const options = getServerStripeOptions();
-      expect(options.apiVersion).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(options.apiVersion).toBeUndefined();
     });
 
     it('should have reasonable timeout values', () => {

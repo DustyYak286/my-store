@@ -238,6 +238,23 @@ export const validatePaymentAmount = (amount: number): {
   isValid: boolean;
   error?: string;
 } => {
+  // Check for invalid number types
+  if (typeof amount !== 'number' || isNaN(amount) || !isFinite(amount)) {
+    return {
+      isValid: false,
+      error: 'Invalid payment amount. Please enter a valid number.',
+    };
+  }
+  
+  // Check for negative amounts
+  if (amount <= 0) {
+    return {
+      isValid: false,
+      error: 'Payment amount must be greater than zero.',
+    };
+  }
+  
+  // Check minimum amount (2.50 RON)
   if (amount < PAYMENT_LIMITS.MIN_AMOUNT_DISPLAY) {
     return {
       isValid: false,
@@ -245,10 +262,20 @@ export const validatePaymentAmount = (amount: number): {
     };
   }
   
+  // Check maximum amount (4,999,999 RON)
   if (amount > PAYMENT_LIMITS.MAX_AMOUNT_DISPLAY) {
     return {
       isValid: false,
       error: PAYMENT_ERROR_MESSAGES.AMOUNT_TOO_LARGE,
+    };
+  }
+  
+  // Check for excessive decimal places (RON supports 2 decimal places)
+  const decimalPlaces = (amount.toString().split('.')[1] || '').length;
+  if (decimalPlaces > CURRENCY_CONFIG.decimalPlaces) {
+    return {
+      isValid: false,
+      error: `Amount cannot have more than ${CURRENCY_CONFIG.decimalPlaces} decimal places for RON currency.`,
     };
   }
   
@@ -263,6 +290,54 @@ export const validatePaymentAmount = (amount: number): {
 export const calculateRetryDelay = (attempt: number): number => {
   const delay = RETRY_CONFIG.BASE_DELAY * Math.pow(RETRY_CONFIG.BACKOFF_MULTIPLIER, attempt - 1);
   return Math.min(delay, RETRY_CONFIG.MAX_DELAY);
+};
+
+/**
+ * Validate and normalize currency code
+ * @param currency Currency code to validate
+ * @returns Validation result with normalized currency
+ */
+export const validateCurrency = (currency?: string): {
+  isValid: boolean;
+  normalizedCurrency: string;
+  error?: string;
+  warning?: string;
+} => {
+  // Default to RON if no currency provided
+  if (!currency) {
+    return {
+      isValid: true,
+      normalizedCurrency: PAYMENT_CURRENCY,
+    };
+  }
+  
+  // Normalize currency code to lowercase for comparison
+  const normalizedInput = currency.toLowerCase().trim();
+  
+  // Check if it's RON (our only supported currency)
+  if (normalizedInput === PAYMENT_CURRENCY) {
+    return {
+      isValid: true,
+      normalizedCurrency: PAYMENT_CURRENCY,
+    };
+  }
+  
+  // Handle common variations and typos
+  const ronVariations = ['ron', 'leu', 'lei', 'romanian leu', 'rl'];
+  if (ronVariations.includes(normalizedInput)) {
+    return {
+      isValid: true,
+      normalizedCurrency: PAYMENT_CURRENCY,
+      warning: `Currency normalized from '${currency}' to 'RON'.`,
+    };
+  }
+  
+  // Reject unsupported currencies
+  return {
+    isValid: false,
+    normalizedCurrency: PAYMENT_CURRENCY,
+    error: `Unsupported currency '${currency}'. Only RON (Romanian Leu) is supported.`,
+  };
 };
 
 /**
