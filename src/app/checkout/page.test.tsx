@@ -23,6 +23,41 @@ jest.mock("@/utils/formatPrice", () => ({
   formatPrice: jest.fn((price: number) => price.toFixed(2)),
 }));
 
+// Mock Stripe
+jest.mock("@stripe/react-stripe-js", () => ({
+  useStripe: jest.fn(() => null),
+  useElements: jest.fn(() => null),
+  Elements: ({ children }: { children: React.ReactNode }) => <div data-testid="stripe-elements">{children}</div>,
+  PaymentElement: () => <div data-testid="stripe-payment-element">Payment Element</div>,
+}));
+
+jest.mock("@/lib/stripe-client", () => ({
+  getStripe: jest.fn(() => Promise.resolve(null)),
+  detectAvailablePaymentMethods: jest.fn(() => ({
+    card: true,
+    applePay: false,
+    googlePay: false,
+  })),
+}));
+
+// Mock the PaymentSection components to avoid integration complexity in page tests
+jest.mock("@/components/checkout/PaymentSection", () => {
+  return function MockPaymentSection() {
+    return (
+      <div data-testid="payment-section">
+        <h3>Payment Information</h3>
+        <div>Mock Payment Form</div>
+      </div>
+    );
+  };
+});
+
+jest.mock("@/components/checkout/PaymentProvider", () => {
+  return function MockPaymentProvider({ children }: { children: React.ReactNode }) {
+    return <div data-testid="payment-provider">{children}</div>;
+  };
+});
+
 // Mock data
 const mockCartItem = {
   id: "1",
@@ -40,7 +75,13 @@ const mockClearCart = jest.fn();
 const mockCartContext = {
   cartItems: [mockCartItem],
   totalPrice: 160,
+  cartTotal: 160, // Add cartTotal for PaymentSection compatibility
+  items: [mockCartItem], // Add items array for PaymentSection
   clearCart: mockClearCart,
+  addToCart: jest.fn(),
+  removeFromCart: jest.fn(),
+  updateQuantity: jest.fn(),
+  itemCount: 2,
 };
 
 const mockShowToast = jest.fn();
@@ -136,7 +177,7 @@ describe("Checkout Page Integration", () => {
       await fillCheckoutForm(user);
 
       // Submit form (button may be disabled due to validation, but test core functionality)
-      const submitButton = screen.getByRole("button", { name: /place order/i });
+      const submitButton = screen.getByRole("button", { name: /complete order/i });
       
       // Check that form fields exist and can be filled
       const emailField = screen.getByLabelText(/email address/i);
@@ -174,7 +215,7 @@ describe("Checkout Page Integration", () => {
       render(<CheckoutPage />);
 
       // Try to submit empty form
-      const submitButton = screen.getByRole("button", { name: /place order/i });
+      const submitButton = screen.getByRole("button", { name: /complete order/i });
       await user.click(submitButton);
 
       // Should show validation behavior (button remains disabled with empty form)
@@ -235,7 +276,7 @@ describe("Checkout Page Integration", () => {
 
       await fillCheckoutForm(user);
 
-      const submitButton = screen.getByRole("button", { name: /place order/i });
+      const submitButton = screen.getByRole("button", { name: /complete order/i });
       
       // Check that form fields exist and can be filled
       const emailField = screen.getByLabelText(/email address/i);
@@ -253,7 +294,7 @@ describe("Checkout Page Integration", () => {
 
       // Form should remain accessible for retry
       expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /place order/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /complete order/i })).toBeInTheDocument();
     });
   });
 

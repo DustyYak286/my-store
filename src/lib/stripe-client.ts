@@ -345,15 +345,27 @@ export const detectAvailablePaymentMethods = (): {
   googlePay: boolean;
   card: boolean;
 } => {
-  // Basic detection - can be enhanced with actual capability checking
+  // Enhanced detection using proper browser capabilities
   const isAppleDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
     (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 0);
   
   const isAndroid = /Android/.test(navigator.userAgent);
+  const isChrome = /Chrome/.test(navigator.userAgent);
+  const isSafari = /Safari/.test(navigator.userAgent) && !isChrome;
+  
+  // Apple Pay detection
+  const applePaySupported = isAppleDevice && 
+    isSafari && 
+    window.ApplePaySession?.canMakePayments?.() === true;
+  
+  // Google Pay detection - available on Chrome/Edge and Android browsers
+  const googlePaySupported = (isChrome || isAndroid) && 
+    !!window.PaymentRequest && 
+    !isAppleDevice; // Exclude Apple devices from Google Pay
   
   return {
-    applePay: isAppleDevice && window.ApplePaySession?.canMakePayments?.() === true,
-    googlePay: isAndroid || /Chrome/.test(navigator.userAgent),
+    applePay: applePaySupported,
+    googlePay: googlePaySupported,
     card: true, // Always available
   };
 };
@@ -382,10 +394,87 @@ export const checkApplePayAvailability = async (): Promise<boolean> => {
  */
 export const checkGooglePayAvailability = async (): Promise<boolean> => {
   try {
-    // Basic check - in real implementation, you'd use Google Pay API
-    return /Chrome|Android/.test(navigator.userAgent);
+    // Enhanced check using Payment Request API
+    if (!window.PaymentRequest) {
+      return false;
+    }
+    
+    const isChrome = /Chrome/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    const isAppleDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+      (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 0);
+    
+    // Google Pay is typically available on Chrome/Edge and Android, but not on Apple devices
+    return (isChrome || isAndroid) && !isAppleDevice;
   } catch {
     return false;
+  }
+};
+
+/**
+ * Enhanced payment method detection using Stripe Payment Request API
+ * This provides more accurate detection by actually testing Stripe's capabilities
+ * @param stripe Stripe instance
+ * @param amount Test amount for payment request (optional)
+ * @returns Promise with detailed payment method availability
+ */
+export const detectPaymentMethodsWithStripe = async (
+  stripe: any,
+  amount: number = 100 // Default test amount in bani
+): Promise<{
+  applePay: boolean;
+  googlePay: boolean;
+  card: boolean;
+  paymentRequest?: any;
+}> => {
+  try {
+    if (!stripe) {
+      return {
+        applePay: false,
+        googlePay: false,
+        card: true,
+      };
+    }
+
+    // Create a test payment request to check capabilities
+    const paymentRequest = stripe.paymentRequest({
+      country: 'RO',
+      currency: 'ron',
+      total: {
+        label: 'Test',
+        amount: amount,
+      },
+      requestPayerName: false,
+      requestPayerEmail: false,
+    });
+
+    // Check what payment methods are actually available
+    const canMakePayment = await paymentRequest.canMakePayment();
+    
+    if (canMakePayment) {
+      return {
+        applePay: !!canMakePayment.applePay,
+        googlePay: !!canMakePayment.googlePay,
+        card: true,
+        paymentRequest,
+      };
+    }
+
+    // Fallback to basic detection if payment request fails
+    const basicDetection = detectAvailablePaymentMethods();
+    return {
+      ...basicDetection,
+      paymentRequest: null,
+    };
+  } catch (error) {
+    console.warn('Payment method detection failed, falling back to basic detection:', error);
+    
+    // Fallback to basic detection
+    const basicDetection = detectAvailablePaymentMethods();
+    return {
+      ...basicDetection,
+      paymentRequest: null,
+    };
   }
 };
 

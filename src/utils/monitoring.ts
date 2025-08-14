@@ -29,6 +29,10 @@ class MetricsRegistry {
   private webhookProcessedByType: Record<string, number> = {};
   private webhookIgnoredByReason: Record<string, number> = {};
   private webhookSignatureInvalidTotal = 0;
+  private paymentErrorsByType: Record<string, number> = {};
+  private paymentRetriesByAttempt: Record<number, number> = {};
+  private paymentRetryDelaySum = 0;
+  private paymentRetryCount = 0;
 
   private histograms: Record<HistogramKey, HistogramBuckets> = {
     'api.create_intent': { bounds: [100, 300, 1000, 3000, 10000, Infinity], counts: [0, 0, 0, 0, 0, 0] },
@@ -91,6 +95,25 @@ class MetricsRegistry {
     this.webhookSignatureInvalidTotal += 1;
   }
 
+  public recordPaymentError(type: string, metadata: Record<string, unknown> = {}): void {
+    this.paymentErrorsByType[type] = (this.paymentErrorsByType[type] || 0) + 1;
+    
+    // Log detailed error information for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📊 Payment error recorded: ${type}`, metadata);
+    }
+  }
+
+  public recordPaymentRetry(attempt: number, delayMs: number): void {
+    this.paymentRetriesByAttempt[attempt] = (this.paymentRetriesByAttempt[attempt] || 0) + 1;
+    this.paymentRetryDelaySum += delayMs;
+    this.paymentRetryCount += 1;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📊 Payment retry recorded: attempt ${attempt}, delay ${delayMs}ms`);
+    }
+  }
+
   public snapshot(): Record<string, unknown> {
     return {
       attemptsTotal: this.attemptsTotal,
@@ -99,6 +122,12 @@ class MetricsRegistry {
       validationErrorsByType: { ...this.validationErrorsByType },
       originBlockedTotal: this.originBlockedTotal,
       rateLimitBlockedByTier: { ...this.rateLimitBlockedByTier },
+      paymentErrors: {
+        errorsByType: { ...this.paymentErrorsByType },
+        retriesByAttempt: { ...this.paymentRetriesByAttempt },
+        averageRetryDelay: this.paymentRetryCount > 0 ? this.paymentRetryDelaySum / this.paymentRetryCount : 0,
+        totalRetries: this.paymentRetryCount,
+      },
       histograms: {
         api: { bounds: this.histograms['api.create_intent'].bounds, counts: [...this.histograms['api.create_intent'].counts] },
         stripe: { bounds: this.histograms['stripe.create_payment_intent'].bounds, counts: [...this.histograms['stripe.create_payment_intent'].counts] },
@@ -125,6 +154,10 @@ class MetricsRegistry {
     this.webhookProcessedByType = {};
     this.webhookIgnoredByReason = {};
     this.webhookSignatureInvalidTotal = 0;
+    this.paymentErrorsByType = {};
+    this.paymentRetriesByAttempt = {};
+    this.paymentRetryDelaySum = 0;
+    this.paymentRetryCount = 0;
     Object.keys(this.histograms).forEach(k => {
       const key = k as HistogramKey;
       this.histograms[key].counts = this.histograms[key].counts.map(() => 0);

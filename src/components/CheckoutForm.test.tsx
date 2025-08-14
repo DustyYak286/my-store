@@ -19,6 +19,23 @@ jest.mock("@/hooks/useToast", () => ({
   useToast: jest.fn(),
 }));
 
+// Mock Stripe
+jest.mock("@stripe/react-stripe-js", () => ({
+  useStripe: jest.fn(() => null),
+  useElements: jest.fn(() => null),
+  Elements: ({ children }: { children: React.ReactNode }) => <div data-testid="stripe-elements">{children}</div>,
+  PaymentElement: () => <div data-testid="stripe-payment-element">Payment Element</div>,
+}));
+
+jest.mock("@/lib/stripe-client", () => ({
+  getStripe: jest.fn(() => Promise.resolve(null)),
+  detectAvailablePaymentMethods: jest.fn(() => ({
+    card: true,
+    applePay: false,
+    googlePay: false,
+  })),
+}));
+
 // Mock router
 const mockPush = jest.fn();
 const mockRouter = {
@@ -29,6 +46,12 @@ const mockRouter = {
 const mockClearCart = jest.fn();
 const mockCartContext = {
   clearCart: mockClearCart,
+  cartTotal: 25.99, // Add cartTotal for PaymentSection
+  items: [],
+  addToCart: jest.fn(),
+  removeFromCart: jest.fn(),
+  updateQuantity: jest.fn(),
+  itemCount: 0,
 };
 
 // Mock toast hook
@@ -58,7 +81,8 @@ describe("CheckoutForm", () => {
       expect(screen.getByText("Contact Information")).toBeInTheDocument();
       expect(screen.getByText("Shipping Address")).toBeInTheDocument();
       expect(screen.getByText("Billing Address")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /place order/i })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Payment Information" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /complete order/i })).toBeInTheDocument();
     });
 
     it("renders all required form fields", () => {
@@ -81,7 +105,7 @@ describe("CheckoutForm", () => {
     it("renders submit button as disabled by default", () => {
       render(<CheckoutForm />);
 
-      const submitButton = screen.getByRole("button", { name: /place order/i });
+      const submitButton = screen.getByRole("button", { name: /complete order/i });
       expect(submitButton).toBeDisabled();
     });
 
@@ -170,14 +194,14 @@ describe("CheckoutForm", () => {
     it("submit button shows correct text", () => {
       render(<CheckoutForm />);
 
-      const submitButton = screen.getByRole("button", { name: /place order/i });
-      expect(submitButton).toHaveTextContent("Place Order");
+      const submitButton = screen.getByRole("button", { name: /complete order/i });
+      expect(submitButton).toHaveTextContent("Complete Order with Card");
     });
 
     it("submit button has proper accessibility attributes", () => {
       render(<CheckoutForm />);
 
-      const submitButton = screen.getByRole("button", { name: /place order/i });
+      const submitButton = screen.getByRole("button", { name: /complete order/i });
       expect(submitButton).toHaveAttribute("type", "submit");
       expect(submitButton).toHaveAttribute("aria-describedby");
     });
@@ -185,7 +209,7 @@ describe("CheckoutForm", () => {
     it("button is disabled when form is empty", () => {
       render(<CheckoutForm />);
 
-      const submitButton = screen.getByRole("button", { name: /place order/i });
+      const submitButton = screen.getByRole("button", { name: /complete order/i });
       expect(submitButton).toBeDisabled();
     });
   });
@@ -197,7 +221,7 @@ describe("CheckoutForm", () => {
       const emailInput = screen.getByLabelText(/email address/i);
       expect(emailInput).toHaveAttribute("aria-invalid");
 
-      const submitButton = screen.getByRole("button", { name: /place order/i });
+      const submitButton = screen.getByRole("button", { name: /complete order/i });
       expect(submitButton).toHaveAttribute("aria-describedby");
     });
 
