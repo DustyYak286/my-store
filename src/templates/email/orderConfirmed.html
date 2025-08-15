@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmation - {{orderNumber}}</title>
+    <style>
+        /* Email-safe CSS styles */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8fafc;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            background-color: #2563eb;
+            color: #ffffff;
+            padding: 32px 24px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .content {
+            padding: 24px;
+        }
+        
+        .order-info {
+            background-color: #f1f5f9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .order-number {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 8px;
+        }
+        
+        .order-total {
+            font-size: 24px;
+            font-weight: 700;
+            color: #059669;
+        }
+        
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .items-table th,
+        .items-table td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .items-table th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #475569;
+        }
+        
+        .address-section {
+            display: inline-block;
+            width: 48%;
+            vertical-align: top;
+            margin: 10px 0;
+        }
+        
+        .address-title {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+        
+        .address {
+            background-color: #f9fafb;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .footer {
+            background-color: #f8fafc;
+            padding: 24px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .footer p {
+            margin: 0;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        
+        .button {
+            display: inline-block;
+            background-color: #2563eb;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 16px 0;
+        }
+        
+        .success-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 16px auto;
+            background-color: #10b981;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        @media only screen and (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .address-section {
+                width: 100%;
+                display: block;
+            }
+            
+            .header {
+                padding: 24px 16px;
+            }
+            
+            .content {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="success-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20,6 9,17 4,12"></polyline>
+                </svg>
+            </div>
+            <h1>Order Confirmed!</h1>
+            <p>Thank you for your order, {{customerName}}</p>
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+            <div class="order-info">
+                <div class="order-number">Order #{{orderNumber}}</div>
+                <div>Order Date: {{orderDate}}</div>
+                <div class="order-total">Total: {{orderTotal}} {{currency}}</div>
+            </div>
+            
+            <h2>Order Summary</h2>
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each items}}
+                    <tr>
+                        <td>{{name}}</td>
+                        <td>{{quantity}}</td>
+                        <td>{{price}}</td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+            
+            <h2>Shipping & Billing</h2>
+            <div style="overflow: hidden;">
+                <div class="address-section">
+                    <div class="address-title">Shipping Address</div>
+                    <div class="address">
+                        {{shippingAddress.street}}<br>
+                        {{shippingAddress.city}}, {{shippingAddress.state}} {{shippingAddress.zipCode}}<br>
+                        {{shippingAddress.country}}
+                    </div>
+                </div>
+                
+                <div class="address-section" style="float: right;">
+                    <div class="address-title">Billing Address</div>
+                    <div class="address">
+                        {{billingAddress.street}}<br>
+                        {{billingAddress.city}}, {{billingAddress.state}} {{billingAddress.zipCode}}<br>
+                        {{billingAddress.country}}
+                    </div>
+                </div>
+            </div>
+            
+            <div style="clear: both; margin-top: 20px;">
+                <h2>Payment Information</h2>
+                <p><strong>Payment Method:</strong> {{paymentMethod}}</p>
+                <p><strong>Order Status:</strong> {{orderStatus}}</p>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{trackOrderUrl}}" class="button">Track Your Order</a>
+            </div>
+            
+            <div style="background-color: #fef3c7; padding: 16px; border-radius: 6px; margin: 20px 0;">
+                <h3 style="margin: 0 0 8px 0; color: #92400e;">What's Next?</h3>
+                <ul style="margin: 0; padding-left: 20px; color: #92400e;">
+                    <li>We'll send you shipping updates via email</li>
+                    <li>Your order will be processed within 1-2 business days</li>
+                    <li>Track your order using the button above</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p>Need help? Contact our support team at <a href="mailto:support@mystore.com">support@mystore.com</a></p>
+            <p style="margin-top: 8px;">© 2024 My Store. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

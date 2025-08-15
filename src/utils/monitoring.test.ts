@@ -17,7 +17,7 @@ describe('Monitoring utilities', () => {
     const snap = monitoring.snapshot();
     expect(snap.attemptsTotal).toBe(2);
     expect(snap.successTotal).toBe(1);
-    expect((snap.failureByCategory as any).card).toBe(1);
+    expect((snap.paymentErrors as any).failureReasons.card).toBe(1);
     expect((snap.validationErrorsByType as any).amount).toBe(1);
     expect(snap.originBlockedTotal).toBe(1);
     expect((snap.rateLimitBlockedByTier as any).payment).toBe(1);

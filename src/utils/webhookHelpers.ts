@@ -11,7 +11,7 @@ const processedEvents = new Map<string, number>();
 const DEDUP_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const DEDUP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-function cleanupProcessedEvents(now: number): void {
+export function cleanupProcessedEvents(now: number): void {
   for (const [id, ts] of processedEvents.entries()) {
     if (now - ts > DEDUP_TTL_MS) {
       processedEvents.delete(id);

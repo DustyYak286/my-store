@@ -51,6 +51,51 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     loadCartFromStorage();
   }, []);
 
+  // Check for cart clearing instructions after cart is loaded
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const checkCartClearingInstructions = async () => {
+      try {
+        // Get session ID from sessionStorage if available
+        const sessionId = sessionStorage.getItem('checkout_session_id');
+        
+        // Get order ID from URL parameters if on success/error pages
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('order_id');
+
+        // Only check if we have cart items and identifiers
+        if (cartItems.length > 0 && (sessionId || orderId)) {
+          const params = new URLSearchParams();
+          if (sessionId) params.set('sessionId', sessionId);
+          if (orderId) params.set('orderId', orderId);
+
+          const response = await fetch(`/api/cart/check-clearing?${params.toString()}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.shouldClear) {
+              console.log(`🧹 Cart cleared automatically: ${data.reason}`);
+              setCartItems([]);
+            }
+          }
+        }
+      } catch (error) {
+        // Silently handle errors - cart clearing is not critical
+        console.warn('Cart clearing check failed:', error);
+      }
+    };
+
+    // Small delay to ensure page navigation is complete
+    const timer = setTimeout(checkCartClearingInstructions, 1000);
+    return () => clearTimeout(timer);
+  }, [isLoaded, cartItems.length]);
+
   // Save cart to localStorage whenever cartItems changes
   useEffect(() => {
     if (!isLoaded) return; // Don't save until initial load is complete

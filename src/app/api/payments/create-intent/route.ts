@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaymentIntent, handleStripeError } from '@/lib/stripe';
 import { createOrder, validateCreateOrderRequest } from '@/lib/orderHelpers';
+import { storeOrder } from '@/lib/orderStore';
 import { getPaymentIntentParams, stripeConfig } from '@/config/stripe';
 import { PAYMENT_LIMITS, toStripeAmount, validatePaymentAmount, validateCurrency } from '@/constants/payments';
 import { 
@@ -747,6 +748,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
     
     const order = orderResult.order;
     console.log(`✅ Order created - Order ID: ${order.id}, Request ID: ${requestId}`);
+    
+    // Store the order in our order store for webhook processing
+    storeOrder(order);
+    console.log(`✅ Order stored in order store - Order ID: ${order.id}`);
     
     // Generate idempotency key for Stripe request (using sanitized data)
     const idempotencyKey = generateIdempotencyKey(sanitizedRequestData, order.id);

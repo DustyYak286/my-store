@@ -177,6 +177,9 @@ export const useStripePayment = (options: UseStripePaymentOptions = {}): UseStri
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastSubmissionRef = useRef<number>(0);
   const paymentStateRef = useRef<PaymentState>(paymentState);
+  const currentPaymentIntentRef = useRef<string>('');
+  const currentOrderIdRef = useRef<string>('');
+  const currentOrderNumberRef = useRef<string>('');
 
   // Keep paymentStateRef updated
   useEffect(() => {
@@ -454,6 +457,11 @@ export const useStripePayment = (options: UseStripePaymentOptions = {}): UseStri
       startTime: null,
       lastError: null,
     });
+
+    // Reset context refs
+    currentPaymentIntentRef.current = '';
+    currentOrderIdRef.current = '';
+    currentOrderNumberRef.current = '';
   }, []);
 
   /**
@@ -625,6 +633,11 @@ export const useStripePayment = (options: UseStripePaymentOptions = {}): UseStri
       }
 
       console.log(`✅ Payment intent created - Order: ${orderNumber}`);
+      
+      // Store context for error reporting
+      currentPaymentIntentRef.current = clientSecret.split('_secret')[0]; // Extract PI ID from client secret
+      currentOrderIdRef.current = orderId;
+      currentOrderNumberRef.current = orderNumber;
 
       // Step 2: Confirm payment with Stripe
       console.log('🔄 Confirming payment with Stripe...');
@@ -716,8 +729,8 @@ export const useStripePayment = (options: UseStripePaymentOptions = {}): UseStri
         };
       }
 
-      // Record payment error in monitoring with detailed metadata
-      monitoring.recordPaymentError(paymentError.type, {
+      // Record detailed payment failure tracking based on error type
+      const failureDetails = {
         attemptNumber,
         processingTime,
         category: paymentError.category,
@@ -727,7 +740,23 @@ export const useStripePayment = (options: UseStripePaymentOptions = {}): UseStri
         message: paymentError.message,
         formDataEmail: formData.email,
         timeElapsed: Date.now() - (paymentState.startTime || Date.now()),
-      });
+        clientSide: true,
+      };
+
+      // Use enhanced failure tracking methods
+      if (paymentError.code?.includes('card_declined') || paymentError.category === 'card') {
+        monitoring.recordCardDecline(paymentError.code || 'generic_decline', failureDetails);
+      } else if (paymentError.code?.includes('authentication') || paymentError.category === 'authentication') {
+        monitoring.recordAuthenticationFailure(paymentError.code || 'authentication_failed', failureDetails);
+      } else if (paymentError.code?.includes('timeout') || paymentError.category === 'network') {
+        monitoring.recordNetworkTimeout('payment_processing', failureDetails);
+      } else {
+        // General payment failure tracking
+        monitoring.recordPaymentFailure(paymentError.code || paymentError.type, failureDetails);
+      }
+
+      // Also record in legacy error tracking for backwards compatibility
+      monitoring.recordPaymentError(paymentError.type, failureDetails);
 
       // Log error for monitoring (legacy logging)
       logClientError(error, {
@@ -796,6 +825,19 @@ export const useStripePayment = (options: UseStripePaymentOptions = {}): UseStri
           severity: finalError.severity,
           code: finalError.code,
         });
+
+        // Redirect to error page with specific error information after a short delay
+        setTimeout(() => {
+          const errorParams = new URLSearchParams({
+            error: finalError.message,
+            ...(finalError.code && { error_code: finalError.code }),
+            ...(currentPaymentIntentRef.current && { payment_intent: currentPaymentIntentRef.current }),
+            ...(currentOrderIdRef.current && { order_id: currentOrderIdRef.current }),
+            ...(currentOrderNumberRef.current && { order_number: currentOrderNumberRef.current }),
+          });
+
+          router.push(`/checkout/error?${errorParams.toString()}`);
+        }, 3000); // Show error message for 3 seconds before redirecting
 
         const result: PaymentResult = {
           success: false,
