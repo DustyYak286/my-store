@@ -49,10 +49,8 @@ export default function PaymentProvider({ children, clientSecret }: PaymentProvi
         fontSize: '16px',
         color: '#374151', // gray-700
         backgroundColor: '#ffffff',
-        '::placeholder': {
-          color: '#9ca3af', // gray-400
-        },
       },
+      '.Input::placeholder': '#9ca3af', // gray-400
       '.Input:focus': {
         border: `1px solid ${checkoutConfig.ui.primaryColor}`,
         boxShadow: `0 0 0 2px rgba(124, 77, 89, 0.2)`,
@@ -77,11 +75,33 @@ export default function PaymentProvider({ children, clientSecret }: PaymentProvi
   };
 
   // Elements options configuration
-  const options: StripeElementsOptions = {
-    clientSecret,
-    appearance,
-    locale: 'en', // Could be made configurable
-  };
+  // Note: Include clientSecret for Payment Intent mode, or mode for Setup mode
+  const hasValidClientSecret = clientSecret && clientSecret.length > 0;
+  const options: StripeElementsOptions = hasValidClientSecret 
+    ? {
+        // Payment Intent mode - use when we have a valid clientSecret
+        clientSecret,
+        appearance,
+        locale: 'en',
+      }
+    : {
+        // Setup mode - collect payment method without immediate charge
+        mode: 'setup',
+        currency: 'ron', // Required for setup mode
+        appearance,
+        locale: 'en',
+      };
+
+  // Debug logging for development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔧 PaymentProvider initialized:', {
+      hasValidClientSecret,
+      clientSecretPreview: clientSecret ? `${clientSecret.substring(0, 15)}...` : 'undefined',
+      elementsMode: hasValidClientSecret ? 'Payment Intent mode' : 'Setup mode',
+      optionsKeys: Object.keys(options),
+      currency: hasValidClientSecret ? 'from clientSecret' : 'ron'
+    });
+  }
 
   return (
     <PaymentErrorBoundary

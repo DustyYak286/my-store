@@ -39,8 +39,20 @@ const mockPaymentRequest = {
 
 const mockCart = {
   cartItems: [
-    { id: '1', name: 'Test Product 1', price: 25.99, quantity: 2 },
-    { id: '2', name: 'Test Product 2', price: 15.50, quantity: 1 },
+    { 
+      id: '1', 
+      name: 'Test Product 1', 
+      price: { original: 25.99, currency: 'RON' }, 
+      quantity: 2,
+      image: 'test-image-1.jpg'
+    },
+    { 
+      id: '2', 
+      name: 'Test Product 2', 
+      price: { original: 15.50, currency: 'RON' }, 
+      quantity: 1,
+      image: 'test-image-2.jpg'
+    },
   ],
   clearCart: jest.fn(),
 };

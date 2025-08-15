@@ -47,6 +47,19 @@ export default function DigitalWalletButtons({
   const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Validate amount
+  const isValidAmount = typeof amount === 'number' && !isNaN(amount) && amount > 0;
+  
+  // Debug logging
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔧 DigitalWalletButtons props:', {
+      amount,
+      isValidAmount,
+      cartItemsCount: cartItems.length,
+      selectedMethod
+    });
+  }
+
   // Create payment intent for digital wallet
   const createPaymentIntent = useCallback(async (paymentMethodId: string) => {
     try {
@@ -95,9 +108,25 @@ export default function DigitalWalletButtons({
         return;
       }
 
+      // Validate amount before creating payment request
+      if (!isValidAmount) {
+        console.error('❌ DigitalWalletButtons: Invalid amount for payment request:', amount);
+        setError(`Invalid payment amount: ${amount}. Please add items to cart.`);
+        setIsInitializing(false);
+        return;
+      }
+
+      if (!cartItems.length) {
+        setError('Cart is empty');
+        setIsInitializing(false);
+        return;
+      }
+
       try {
         setIsInitializing(true);
         setError(null);
+
+        console.log('🔧 Creating payment request with amount:', amount);
 
         const pr = stripe.paymentRequest({
           country: 'RO',
@@ -106,30 +135,34 @@ export default function DigitalWalletButtons({
             label: 'Store Purchase',
             amount: Math.round(amount * 100), // Convert to bani
           },
-          displayItems: cartItems.map(item => ({
-            label: `${item.name} × ${item.quantity}`,
-            amount: Math.round(item.price * item.quantity * 100),
-          })),
+          displayItems: cartItems.map(item => {
+            const itemPrice = item.price.discount ?? item.price.original;
+            const itemTotal = Math.round(itemPrice * item.quantity * 100);
+            return {
+              label: `${item.name} × ${item.quantity}`,
+              amount: itemTotal,
+            };
+          }),
           requestPayerName: true,
           requestPayerEmail: true,
           requestPayerPhone: false,
           requestShipping: false,
         });
 
-        // Check if payment methods are available
-        const result = await pr.canMakePayment();
+        // Check if payment methods are actually available
+        const canMakePayment = await pr.canMakePayment();
         
-        if (result) {
+        if (canMakePayment) {
           // Filter for the specific payment method we want
-          const hasApplePay = result.applePay && selectedMethod === 'apple_pay';
-          const hasGooglePay = result.googlePay && selectedMethod === 'google_pay';
+          const hasApplePay = canMakePayment.applePay && selectedMethod === 'apple_pay';
+          const hasGooglePay = canMakePayment.googlePay && selectedMethod === 'google_pay';
           
           if (hasApplePay || hasGooglePay) {
             setCanMakePayment(true);
             setPaymentRequest(pr);
           } else {
             setCanMakePayment(false);
-            setError(`${selectedMethod === 'apple_pay' ? 'Apple Pay' : 'Google Pay'} is not available on this device.`);
+            setError(`${selectedMethod === 'apple_pay' ? 'Apple Pay' : 'Google Pay'} is not available on this device or browser.`);
           }
         } else {
           setCanMakePayment(false);
@@ -149,7 +182,7 @@ export default function DigitalWalletButtons({
     };
 
     initializePaymentRequest();
-  }, [stripe, amount, cartItems, selectedMethod]);
+  }, [stripe, amount, cartItems, selectedMethod, isValidAmount]);
 
   // Handle payment method selection
   useEffect(() => {
@@ -249,6 +282,20 @@ export default function DigitalWalletButtons({
     };
   }, [paymentRequest, stripe, createPaymentIntent, onPaymentStart, onPaymentSuccess, onPaymentError, showToast, clearCart, selectedMethod, amount]);
 
+  // Handle invalid amount
+  if (!isValidAmount) {
+    return (
+      <div className="text-center py-8">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="text-amber-600 text-sm">
+            <p className="font-medium">Cart is empty or invalid</p>
+            <p className="mt-1">Please add items to your cart to use digital wallets.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Loading state while initializing
   if (isInitializing) {
     return (
@@ -286,18 +333,20 @@ export default function DigitalWalletButtons({
             <p className="text-xs text-blue-700">
               <strong>To use {selectedMethod === 'apple_pay' ? 'Apple Pay' : 'Google Pay'}:</strong>
             </p>
-            <ul className="text-xs text-blue-600 mt-1 list-disc list-inside">
+            <ul className="text-xs text-blue-600 mt-1 list-disc list-inside space-y-1">
               {selectedMethod === 'apple_pay' ? (
                 <>
-                  <li>Use Safari on an Apple device</li>
-                  <li>Ensure you have cards set up in Wallet</li>
-                  <li>Enable Touch ID or Face ID</li>
+                  <li>Use Safari browser on iPhone, iPad, or Mac</li>
+                  <li>Have cards set up in Apple Wallet</li>
+                  <li>Enable Touch ID, Face ID, or passcode</li>
+                  <li>Ensure device supports Apple Pay</li>
                 </>
               ) : (
                 <>
-                  <li>Use Chrome or Edge browser</li>
-                  <li>Ensure you're signed into Google</li>
-                  <li>Have payment methods saved in Google Pay</li>
+                  <li>Use Chrome, Edge, or Android browser</li>
+                  <li>Sign in to your Google account</li>
+                  <li>Save payment methods in Google Pay</li>
+                  <li>Allow payment permissions for this site</li>
                 </>
               )}
             </ul>
@@ -415,7 +464,7 @@ export default function DigitalWalletButtons({
           {cartItems.slice(0, 3).map((item) => (
             <div key={item.id} className="flex justify-between text-xs text-gray-600">
               <span>{item.name} × {item.quantity}</span>
-              <span>{formatCurrency(item.price * item.quantity)}</span>
+              <span>{formatCurrency((item.price.discount ?? item.price.original) * item.quantity)}</span>
             </div>
           ))}
           {cartItems.length > 3 && (

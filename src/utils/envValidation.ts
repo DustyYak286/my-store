@@ -638,14 +638,20 @@ export const createTypedEnvironment = (
   env: Record<string, string | undefined> = process.env,
   strict: boolean = false
 ): TypedEnvironment => {
-  // Validate first to ensure all values are correct
-  const validationResults = validateEnvironmentVariables(env, strict);
-  
-  if (!validationResults.valid) {
-    throw new Error(
-      `Cannot create typed environment: validation failed with ${validationResults.errors.length} errors. ` +
-      'Fix environment variables before creating typed environment.'
-    );
+  // Skip validation in browser context for security (server secrets not available)
+  if (typeof window !== 'undefined') {
+    // Browser context: Create environment without validation
+    // (Server secrets like STRIPE_SECRET_KEY should never be in browser)
+  } else {
+    // Server context: Validate first to ensure all values are correct
+    const validationResults = validateEnvironmentVariables(env, strict);
+    
+    if (!validationResults.valid) {
+      throw new Error(
+        `Cannot create typed environment: validation failed with ${validationResults.errors.length} errors. ` +
+        'Fix environment variables before creating typed environment.'
+      );
+    }
   }
 
   // Reuse validation parsing logic to eliminate redundancy
@@ -685,11 +691,19 @@ export const createTypedEnvironment = (
       formIncomplete: env.NEXT_PUBLIC_MESSAGE_FORM_INCOMPLETE || 'Please fill in all required fields to place your order',
     },
 
-    payment: {
-      stripeSecretKey: env.STRIPE_SECRET_KEY!,
-      stripePublishableKey: env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
-      stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET!,
-    },
+    payment: typeof window === 'undefined' 
+      ? {
+          // Server context: Include all keys
+          stripeSecretKey: env.STRIPE_SECRET_KEY!,
+          stripePublishableKey: env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
+          stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET!,
+        }
+      : {
+          // Browser context: Only include client-safe keys
+          stripeSecretKey: '', // Never expose server secrets in browser
+          stripePublishableKey: env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
+          stripeWebhookSecret: '', // Never expose server secrets in browser
+        },
   };
 };
 

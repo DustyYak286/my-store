@@ -5,8 +5,18 @@
  * to avoid bundling server-side configuration into the client build.
  */
 
+// Validate Stripe publishable key with helpful error message
+const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+if (!publishableKey) {
+  console.error('❌ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set in environment variables');
+  console.error('Please check your .env.local file and restart the development server');
+}
+if (publishableKey && !publishableKey.startsWith('pk_')) {
+  console.error('❌ Invalid Stripe publishable key format. Must start with pk_test_ or pk_live_');
+}
+
 export const clientStripeConfig = {
-  publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
+  publishableKey: publishableKey || '',
   apiVersion: '2022-11-15' as const,
   locale: 'ro' as const,
   appearance: {

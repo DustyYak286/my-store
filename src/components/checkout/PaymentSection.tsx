@@ -40,9 +40,20 @@ export default function PaymentSection({
 }: PaymentSectionProps) {
   const stripe = useStripe();
   const elements = useElements();
-  const { totalPrice: cartTotal } = useCart();
+  const { totalPrice: cartTotal, cartItems, cartCount } = useCart();
   
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('card');
+  // Debug logging for cart state
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔧 PaymentSection cart state:', {
+      cartTotal,
+      cartItemsCount: cartItems.length,
+      cartCount,
+      cartTotalType: typeof cartTotal,
+      isValidCartTotal: typeof cartTotal === 'number' && !isNaN(cartTotal) && cartTotal > 0
+    });
+  }
+  
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('card'); // Default to card
   const [availableMethods, setAvailableMethods] = useState({
     card: true,
     applePay: false,
@@ -79,24 +90,17 @@ export default function PaymentSection({
         }
         
         setAvailableMethods({
-          card: detected.card,
+          card: true, // Card payment should always be available
           applePay: detected.applePay,
           googlePay: detected.googlePay,
         });
         
-        // Auto-select best available payment method
-        if (detected.applePay && selectedMethod === 'card') {
-          // Prefer Apple Pay on Apple devices if available
-          setSelectedMethod('apple_pay');
-        } else if (detected.googlePay && selectedMethod === 'card' && !detected.applePay) {
-          // Use Google Pay if Apple Pay is not available
-          setSelectedMethod('google_pay');
-        } else if (!detected.card && detected.applePay) {
-          // Fallback to Apple Pay if cards not available
-          setSelectedMethod('apple_pay');
-        } else if (!detected.card && detected.googlePay) {
-          // Fallback to Google Pay if cards and Apple Pay not available
-          setSelectedMethod('google_pay');
+        // Set default method to card, but allow user to choose
+        // Only auto-select if current method is not available
+        if (selectedMethod === 'apple_pay' && !detected.applePay) {
+          setSelectedMethod('card');
+        } else if (selectedMethod === 'google_pay' && !detected.googlePay) {
+          setSelectedMethod('card');
         }
         
         console.log('Payment methods initialized:', {
@@ -108,7 +112,7 @@ export default function PaymentSection({
         console.error('Failed to initialize payment methods:', error);
         // Fallback to card only
         setAvailableMethods({
-          card: true,
+          card: true, // Card payment should always be available
           applePay: false,
           googlePay: false,
         });

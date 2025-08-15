@@ -31,9 +31,27 @@ let stripePromise: Promise<Stripe | null> | null = null;
  */
 export const getStripe = async (): Promise<Stripe | null> => {
   if (!stripePromise) {
+    // Validate publishable key before attempting to load Stripe
+    if (!clientStripeConfig.publishableKey) {
+      console.error('❌ Cannot load Stripe: publishableKey is empty');
+      console.error('Environment variable NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:', process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'UNDEFINED');
+      return null;
+    }
+
+    if (!clientStripeConfig.publishableKey.startsWith('pk_')) {
+      console.error('❌ Cannot load Stripe: invalid publishableKey format');
+      console.error('Key:', clientStripeConfig.publishableKey.substring(0, 20) + '...');
+      return null;
+    }
+
+    console.log('🔄 Loading Stripe with publishable key:', clientStripeConfig.publishableKey.substring(0, 20) + '...');
+    
     stripePromise = loadStripe(clientStripeConfig.publishableKey, {
       // apiVersion: clientStripeConfig.apiVersion, // Use default API version
       locale: clientStripeConfig.locale,
+    }).catch(error => {
+      console.error('❌ Stripe loading failed:', error);
+      return null;
     });
   }
   
@@ -351,17 +369,41 @@ export const detectAvailablePaymentMethods = (): {
   
   const isAndroid = /Android/.test(navigator.userAgent);
   const isChrome = /Chrome/.test(navigator.userAgent);
-  const isSafari = /Safari/.test(navigator.userAgent) && !isChrome;
+  const isEdge = /Edg/.test(navigator.userAgent);
+  const isSafari = /Safari/.test(navigator.userAgent) && !isChrome && !isEdge;
   
-  // Apple Pay detection
-  const applePaySupported = isAppleDevice && 
-    isSafari && 
-    window.ApplePaySession?.canMakePayments?.() === true;
+  // Apple Pay detection - more permissive approach
+  let applePaySupported = false;
+  try {
+    if (isAppleDevice && (isSafari || (window as any).PaymentRequest)) {
+      // Try to check Apple Pay availability
+      if (window.ApplePaySession) {
+        applePaySupported = window.ApplePaySession.canMakePayments() === true;
+      } else {
+        // Fallback: assume available on Safari on Apple devices
+        applePaySupported = isSafari;
+      }
+    }
+  } catch (e) {
+    // If Apple Pay check fails, assume it's available on Safari/Apple devices
+    applePaySupported = isAppleDevice && isSafari;
+  }
   
-  // Google Pay detection - available on Chrome/Edge and Android browsers
-  const googlePaySupported = (isChrome || isAndroid) && 
-    !!window.PaymentRequest && 
-    !isAppleDevice; // Exclude Apple devices from Google Pay
+  // Google Pay detection - more permissive approach
+  let googlePaySupported = false;
+  try {
+    // Google Pay is typically available on:
+    // - Chrome on any platform
+    // - Edge on any platform  
+    // - Android browsers
+    // - But not on Apple devices (conflicting with Apple Pay)
+    googlePaySupported = (isChrome || isEdge || isAndroid) && 
+                        !!window.PaymentRequest &&
+                        !isAppleDevice;
+  } catch (e) {
+    // If check fails, fallback to basic detection
+    googlePaySupported = (isChrome || isAndroid) && !isAppleDevice;
+  }
   
   return {
     applePay: applePaySupported,

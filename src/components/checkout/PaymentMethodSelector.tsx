@@ -83,7 +83,7 @@ export default function PaymentMethodSelector({
       ),
       available: availableMethods.googlePay,
     },
-  ].filter(method => method.available);
+  ]; // Don't filter here - show all methods with proper disabled states
 
   return (
     <div className="space-y-3">
@@ -96,19 +96,22 @@ export default function PaymentMethodSelector({
           <button
             key={method.id}
             type="button"
-            disabled={disabled}
-            onClick={() => onMethodChange(method.id)}
+            disabled={disabled || !method.available}
+            onClick={() => method.available && onMethodChange(method.id)}
             className={`
               relative flex items-center p-4 border-2 rounded-lg transition-all duration-200
-              ${selectedMethod === method.id
-                ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+              ${!method.available 
+                ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
+                : selectedMethod === method.id
+                  ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                  : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
               }
-              ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+              ${disabled ? 'opacity-50 cursor-not-allowed' : method.available ? 'cursor-pointer' : 'cursor-not-allowed'}
               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
             `}
             aria-pressed={selectedMethod === method.id}
             aria-describedby={`${method.id}-description`}
+            title={!method.available ? `${method.name} is not available on this device` : undefined}
           >
             {/* Selection Indicator */}
             <div className="flex-shrink-0 mr-3">
@@ -137,9 +140,9 @@ export default function PaymentMethodSelector({
               </div>
               <p 
                 id={`${method.id}-description`}
-                className="text-xs text-gray-500"
+                className={`text-xs ${method.available ? 'text-gray-500' : 'text-red-500'}`}
               >
-                {method.description}
+                {method.available ? method.description : 'Not available on this device'}
               </p>
             </div>
 
@@ -155,7 +158,7 @@ export default function PaymentMethodSelector({
         ))}
       </div>
 
-      {paymentMethods.length === 0 && (
+      {paymentMethods.filter(m => m.available).length === 0 && (
         <div className="text-center py-6 text-gray-500">
           <svg className="w-8 h-8 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

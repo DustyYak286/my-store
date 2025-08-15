@@ -7,11 +7,81 @@ const nextConfig = {
     // Base CSP directives
     const cspDirectives = {
       'default-src': ["'self'"],
-      'script-src': ["'self'"],
-      'style-src': ["'self'", 'fonts.googleapis.com'],
+      'script-src': [
+        "'self'",
+        'https://js.stripe.com',
+        'https://*.stripe.com',
+        'https://stripe.com',
+        'https://checkout.stripe.com',
+        'https://js.hcaptcha.com',
+        'https://*.hcaptcha.com',
+        'https://hcaptcha.com',
+        'https://newassets.hcaptcha.com'
+      ],
+      'style-src': [
+        "'self'",
+        'fonts.googleapis.com',
+        'https://*.stripe.com',
+        'https://stripe.com',
+        'https://*.hcaptcha.com',
+        'https://hcaptcha.com'
+      ],
       'font-src': ["'self'", 'fonts.gstatic.com'],
-      'img-src': ["'self'", 'data:', 'blob:'],
-      'connect-src': ["'self'"],
+      'img-src': [
+        "'self'",
+        'data:',
+        'blob:',
+        // Stripe image sources
+        'https://js.stripe.com',
+        'https://*.stripe.com',
+        'https://stripe.com',
+        'https://q.stripe.com',
+        'https://m.stripe.network',
+        'https://m.stripe.com',
+        'https://*.stripecdn.com',
+        'https://stripecdn.com',
+        'https://b.stripecdn.com',
+        'https://files.stripe.com',
+        'https://checkout.stripe.com',
+        // hCaptcha image sources
+        'https://assets.hcaptcha.com',
+        'https://*.hcaptcha.com',
+        'https://hcaptcha.com',
+        'https://imgs.hcaptcha.com',
+        'https://newassets.hcaptcha.com',
+        // Google/reCAPTCHA fallback
+        'https://www.gstatic.com',
+        'https://www.google.com',
+        'https://www.recaptcha.net',
+        // Payment method logos
+        'https://js.stripe.com/v3/',
+        'https://hooks.stripe.com'
+      ],
+      'connect-src': [
+        "'self'",
+        'https://api.stripe.com',
+        'https://*.stripe.com',
+        'https://stripe.com',
+        'https://checkout.stripe.com',
+        'https://q.stripe.com',
+        'https://m.stripe.network',
+        'https://m.stripe.com',
+        'https://hooks.stripe.com',
+        'https://js.stripe.com',
+        'https://*.hcaptcha.com',
+        'https://hcaptcha.com'
+      ],
+      'frame-src': [
+        "'self'",
+        'https://js.stripe.com',
+        'https://*.stripe.com',
+        'https://stripe.com',
+        'https://checkout.stripe.com',
+        'https://hooks.stripe.com',
+        'https://*.hcaptcha.com',
+        'https://hcaptcha.com',
+        'https://newassets.hcaptcha.com'
+      ],
       'frame-ancestors': ["'none'"],
       'base-uri': ["'self'"],
       'form-action': ["'self'"],
@@ -25,6 +95,10 @@ const nextConfig = {
     if (isDevelopment) {
       cspDirectives['script-src'].push("'unsafe-inline'", "'unsafe-eval'");
       cspDirectives['style-src'].push("'unsafe-inline'");
+      // Relax image sources in development to avoid devtool beacons being blocked
+      if (Array.isArray(cspDirectives['img-src'])) {
+        cspDirectives['img-src'].push('*');
+      }
       cspDirectives['connect-src'].push('ws:', 'wss:'); // HMR support
     } else {
       // Production: Allow inline styles for Tailwind but restrict scripts
@@ -61,11 +135,11 @@ const nextConfig = {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
           },
-          // Enhanced Content Security Policy
-          {
-            key: 'Content-Security-Policy',
-            value: csp,
-          },
+          // CSP is handled by middleware.ts for better dynamic control
+          // {
+          //   key: 'Content-Security-Policy',
+          //   value: csp,
+          // },
           // Enhanced Permissions Policy
           {
             key: 'Permissions-Policy',

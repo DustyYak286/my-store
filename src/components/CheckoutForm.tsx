@@ -37,7 +37,7 @@ export default function CheckoutForm() {
   // Payment state management
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'apple_pay' | 'google_pay'>('card');
   const [isPaymentValid, setIsPaymentValid] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string>('');
+  const [clientSecret, setClientSecret] = useState<string | undefined>(undefined); // undefined until Payment Intent is created
 
   // Get countries using utility function for consistent SSR/client rendering
   const countries = getCountriesFromEnv();

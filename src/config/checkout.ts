@@ -41,8 +41,10 @@ export interface CheckoutConfig {
   redirectDelay: number;
 }
 
-// Validate environment variables (non-blocking in production)
-const envValidation = validateEnvironmentSafe();
+// Validate environment variables (skip in browser context for security)
+const envValidation = typeof window === 'undefined' 
+  ? validateEnvironmentSafe() // Server-side: validate all variables
+  : { valid: true, errors: [], warnings: [], summary: { totalChecked: 0, passed: 0, failed: 0, warnings: 0 } }; // Browser: skip validation
 
 // In development, log validation results for debugging
 if (isDevelopment() && envValidation.warnings.length > 0) {
