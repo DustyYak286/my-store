@@ -184,7 +184,7 @@ describe('Stripe Configuration Utils', () => {
   describe('Configuration validation', () => {
     it('should use default API version (no explicit version set)', () => {
       const options = getServerStripeOptions();
-      expect(options.apiVersion).toBeUndefined();
+      expect(options).not.toHaveProperty('apiVersion');
     });
 
     it('should have reasonable timeout values', () => {

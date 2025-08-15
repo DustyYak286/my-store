@@ -10,7 +10,7 @@ import PaymentErrorBoundary from '@/components/PaymentErrorBoundary';
 
 interface PaymentProviderProps {
   children: ReactNode;
-  clientSecret?: string;
+  clientSecret?: string | undefined;
 }
 
 /**
@@ -24,7 +24,7 @@ interface PaymentProviderProps {
  */
 export default function PaymentProvider({ children, clientSecret }: PaymentProviderProps) {
   const [stripePromise] = useState(() => getStripe());
-  const { cartTotal } = useCart();
+  const { totalPrice } = useCart();
 
   // Stripe Elements appearance configuration to match design system
   const appearance: Appearance = {
@@ -50,7 +50,9 @@ export default function PaymentProvider({ children, clientSecret }: PaymentProvi
         color: '#374151', // gray-700
         backgroundColor: '#ffffff',
       },
-      '.Input::placeholder': '#9ca3af', // gray-400
+      '.Input::placeholder': {
+        color: '#9ca3af', // gray-400
+      },
       '.Input:focus': {
         border: `1px solid ${checkoutConfig.ui.primaryColor}`,
         boxShadow: `0 0 0 2px rgba(124, 77, 89, 0.2)`,

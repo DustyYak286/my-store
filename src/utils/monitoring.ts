@@ -6,7 +6,7 @@
  */
 
 type Tier = 'burst' | 'payment' | 'general' | 'suspicious';
-type HistogramKey = 'api.create_intent' | 'stripe.create_payment_intent' | 'api.webhook';
+type HistogramKey = 'api.create_intent' | 'stripe.create_payment_intent' | 'api.webhook' | 'client.payment_processing';
 
 interface HistogramBuckets {
   bounds: number[];
@@ -38,6 +38,7 @@ class MetricsRegistry {
     'api.create_intent': { bounds: [100, 300, 1000, 3000, 10000, Infinity], counts: [0, 0, 0, 0, 0, 0] },
     'stripe.create_payment_intent': { bounds: [50, 200, 500, 1000, 3000, Infinity], counts: [0, 0, 0, 0, 0, 0] },
     'api.webhook': { bounds: [10, 50, 200, 500, 2000, Infinity], counts: [0, 0, 0, 0, 0, 0] },
+    'client.payment_processing': { bounds: [1000, 5000, 15000, 30000, 60000, Infinity], counts: [0, 0, 0, 0, 0, 0] },
   };
 
   public startTimer(key: HistogramKey): () => void {
@@ -52,7 +53,9 @@ class MetricsRegistry {
     const h = this.histograms[key];
     const idx = h.bounds.findIndex(bound => ms <= bound);
     const bucket = idx === -1 ? h.counts.length - 1 : idx;
-    h.counts[bucket] += 1;
+    if (h.counts[bucket] !== undefined) {
+      h.counts[bucket] += 1;
+    }
   }
 
   public recordPaymentAttempt(): void {
@@ -132,6 +135,7 @@ class MetricsRegistry {
         api: { bounds: this.histograms['api.create_intent'].bounds, counts: [...this.histograms['api.create_intent'].counts] },
         stripe: { bounds: this.histograms['stripe.create_payment_intent'].bounds, counts: [...this.histograms['stripe.create_payment_intent'].counts] },
         webhook: { bounds: this.histograms['api.webhook'].bounds, counts: [...this.histograms['api.webhook'].counts] },
+        clientPayment: { bounds: this.histograms['client.payment_processing'].bounds, counts: [...this.histograms['client.payment_processing'].counts] },
       },
       webhook: {
         receivedByType: { ...this.webhookReceivedByType },
@@ -168,5 +172,72 @@ class MetricsRegistry {
 export const monitoring = new MetricsRegistry();
 
 export type Monitoring = typeof monitoring;
+
+// Utility function to get current payment metrics summary
+export function getPaymentMetricsSummary() {
+  const snapshot = monitoring.snapshot();
+  
+  return {
+    overview: {
+      totalAttempts: snapshot.attemptsTotal,
+      successCount: snapshot.successTotal,
+      failureCount: Object.values(snapshot.failureByCategory).reduce((sum, count) => sum + (count as number), 0),
+      successRate: snapshot.attemptsTotal > 0 ? 
+        (snapshot.successTotal / snapshot.attemptsTotal * 100).toFixed(2) + '%' : '0%',
+    },
+    failures: snapshot.failureByCategory,
+    validationErrors: snapshot.validationErrorsByType,
+    paymentErrors: snapshot.paymentErrors,
+    performanceSummary: {
+      apiLatency: calculateHistogramStats(snapshot.histograms.api),
+      stripeLatency: calculateHistogramStats(snapshot.histograms.stripe),
+      clientProcessing: calculateHistogramStats(snapshot.histograms.clientPayment),
+      webhookLatency: calculateHistogramStats(snapshot.histograms.webhook),
+    },
+    timestamp: snapshot.timestamp,
+  };
+}
+
+// Helper function to calculate histogram statistics
+function calculateHistogramStats(histogram: { bounds: number[], counts: number[] }) {
+  const totalCount = histogram.counts.reduce((sum, count) => sum + count, 0);
+  
+  if (totalCount === 0) {
+    return { count: 0, p50: 0, p95: 0, p99: 0 };
+  }
+
+  let p50Count = Math.ceil(totalCount * 0.5);
+  let p95Count = Math.ceil(totalCount * 0.95);
+  let p99Count = Math.ceil(totalCount * 0.99);
+
+  let runningCount = 0;
+  let p50 = 0, p95 = 0, p99 = 0;
+
+  for (let i = 0; i < histogram.counts.length; i++) {
+    runningCount += histogram.counts[i];
+    
+    if (p50Count > 0 && runningCount >= p50Count && p50 === 0) {
+      p50 = histogram.bounds[i] === Infinity ? histogram.bounds[i - 1] || 0 : histogram.bounds[i];
+      p50Count = 0;
+    }
+    
+    if (p95Count > 0 && runningCount >= p95Count && p95 === 0) {
+      p95 = histogram.bounds[i] === Infinity ? histogram.bounds[i - 1] || 0 : histogram.bounds[i];
+      p95Count = 0;
+    }
+    
+    if (p99Count > 0 && runningCount >= p99Count && p99 === 0) {
+      p99 = histogram.bounds[i] === Infinity ? histogram.bounds[i - 1] || 0 : histogram.bounds[i];
+      p99Count = 0;
+    }
+  }
+
+  return {
+    count: totalCount,
+    p50: p50 || histogram.bounds[histogram.bounds.length - 2] || 0,
+    p95: p95 || histogram.bounds[histogram.bounds.length - 2] || 0,
+    p99: p99 || histogram.bounds[histogram.bounds.length - 2] || 0,
+  };
+}
 
 

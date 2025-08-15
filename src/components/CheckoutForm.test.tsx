@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import CheckoutForm from "./CheckoutForm";
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/hooks/useToast";
+import { useStripePayment } from "@/hooks/useStripePayment";
 
 // Mock the dependencies
 jest.mock("next/navigation", () => ({
@@ -17,6 +18,12 @@ jest.mock("@/context/CartContext", () => ({
 
 jest.mock("@/hooks/useToast", () => ({
   useToast: jest.fn(),
+  usePaymentToast: jest.fn(),
+  useLegacyToast: jest.fn(),
+}));
+
+jest.mock("@/hooks/useStripePayment", () => ({
+  useStripePayment: jest.fn(),
 }));
 
 // Mock Stripe
@@ -63,12 +70,32 @@ const mockToastHook = {
   hideToast: mockHideToast,
 };
 
+const mockStripePaymentHook = {
+  paymentState: {
+    isProcessing: false,
+    isSubmitting: false,
+    currentAttempt: 0,
+    hasStarted: false,
+    timeoutWarningShown: false,
+    startTime: null,
+    lastError: null,
+  },
+  processPayment: jest.fn(),
+  retryPayment: jest.fn(),
+  cancelPayment: jest.fn(),
+  resetPaymentState: jest.fn(),
+  canRetry: false,
+  timeElapsed: 0,
+  isTimeout: false,
+};
+
 describe("CheckoutForm", () => {
   beforeEach(() => {
     // Setup mocks
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
     (useCart as jest.Mock).mockReturnValue(mockCartContext);
     (useToast as jest.Mock).mockReturnValue(mockToastHook);
+    (useStripePayment as jest.Mock).mockReturnValue(mockStripePaymentHook);
     
     // Clear all mocks
     jest.clearAllMocks();
@@ -92,11 +119,11 @@ describe("CheckoutForm", () => {
       expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
 
       // Shipping Address
-      expect(screen.getByLabelText(/^full name/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/^street address/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/^city/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/^postal code/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/^country/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/street address/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/city/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/postal code/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/country/i)).toBeInTheDocument();
 
       // Billing Address
       expect(screen.getByLabelText(/same as shipping address/i)).toBeInTheDocument();
@@ -133,14 +160,14 @@ describe("CheckoutForm", () => {
       expect(emailField).toHaveAttribute("name", "email");
       expect(emailField).toHaveAttribute("aria-invalid");
 
-      const countryField = screen.getByLabelText(/^country/i);
+      const countryField = screen.getByLabelText(/country/i);
       expect(countryField).toHaveAttribute("name", "shippingCountry");
     });
 
     it("country field has options", async () => {
       render(<CheckoutForm />);
 
-      const countrySelect = screen.getByLabelText(/^country/i);
+      const countrySelect = screen.getByLabelText(/country/i);
       expect(screen.getByRole("option", { name: "United States" })).toBeInTheDocument();
       expect(screen.getByRole("option", { name: "Canada" })).toBeInTheDocument();
     });
@@ -171,7 +198,7 @@ describe("CheckoutForm", () => {
       await user.click(sameAsShippingCheckbox);
 
       // When unchecked, additional billing fields should appear
-      const allNameFields = screen.getAllByLabelText(/^full name/i);
+      const allNameFields = screen.getAllByLabelText(/full name/i);
       expect(allNameFields.length).toBeGreaterThan(1);
     });
 
@@ -231,7 +258,7 @@ describe("CheckoutForm", () => {
       const emailField = screen.getByLabelText(/email address/i);
       expect(emailField).toHaveAttribute("id");
       
-      const nameField = screen.getByLabelText(/^full name/i);
+      const nameField = screen.getByLabelText(/full name/i);
       expect(nameField).toHaveAttribute("id");
     });
 
@@ -269,7 +296,7 @@ describe("CheckoutForm", () => {
 
       const testFields = [
         { field: screen.getByLabelText(/email address/i), value: "john@example.com" },
-        { field: screen.getByLabelText(/^full name/i), value: "John Doe" },
+        { field: screen.getByLabelText(/full name/i), value: "John Doe" },
         { field: screen.getByLabelText(/street address/i), value: "123 Main St" },
         { field: screen.getByLabelText(/city/i), value: "New York" },
         { field: screen.getByLabelText(/postal code/i), value: "10001" },

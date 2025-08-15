@@ -198,12 +198,17 @@ export function checkRateLimit(
   const resetTime = record.firstRequest + config.windowMs;
   const remaining = Math.max(0, config.maxRequests - record.count);
 
-  return {
+  const result: RateLimitResult = {
     allowed: isAllowed,
     remaining,
     resetTime,
-    retryAfter: isAllowed ? undefined : Math.ceil((resetTime - now) / 1000),
   };
+  
+  if (!isAllowed) {
+    result.retryAfter = Math.ceil((resetTime - now) / 1000);
+  }
+  
+  return result;
 }
 
 /**
@@ -232,14 +237,17 @@ export function checkMultiTierRateLimit(request: NextRequest): {
 
   if (!burstCheck.allowed) {
     warnings.push('Burst rate limit exceeded');
-    return {
-      allowed: false,
-      tier: 'burst',
+    const result = {
+      allowed: false as const,
+      tier: 'burst' as const,
       remaining: burstCheck.remaining,
       resetTime: burstCheck.resetTime,
-      retryAfter: burstCheck.retryAfter,
       warnings,
-    };
+    } as any;
+    if (burstCheck.retryAfter) {
+      result.retryAfter = burstCheck.retryAfter;
+    }
+    return result;
   }
 
   // Check suspicious IP restrictions
@@ -251,14 +259,17 @@ export function checkMultiTierRateLimit(request: NextRequest): {
 
     if (!suspiciousCheck.allowed) {
       warnings.push('Suspicious activity rate limit exceeded');
-      return {
-        allowed: false,
-        tier: 'suspicious',
+      const result = {
+        allowed: false as const,
+        tier: 'suspicious' as const,
         remaining: suspiciousCheck.remaining,
         resetTime: suspiciousCheck.resetTime,
-        retryAfter: suspiciousCheck.retryAfter,
         warnings,
-      };
+      } as any;
+      if (suspiciousCheck.retryAfter) {
+        result.retryAfter = suspiciousCheck.retryAfter;
+      }
+      return result;
     }
   }
 
@@ -278,14 +289,17 @@ export function checkMultiTierRateLimit(request: NextRequest): {
   });
 
   if (!paymentCheck.allowed) {
-    return {
-      allowed: false,
-      tier: 'payment',
+    const result = {
+      allowed: false as const,
+      tier: 'payment' as const,
       remaining: paymentCheck.remaining,
       resetTime: paymentCheck.resetTime,
-      retryAfter: paymentCheck.retryAfter,
       warnings,
-    };
+    } as any;
+    if (paymentCheck.retryAfter) {
+      result.retryAfter = paymentCheck.retryAfter;
+    }
+    return result;
   }
 
   // Check general API rate limits
@@ -296,14 +310,17 @@ export function checkMultiTierRateLimit(request: NextRequest): {
 
   if (!generalCheck.allowed) {
     warnings.push('General API rate limit exceeded');
-    return {
-      allowed: false,
-      tier: 'general',
+    const result = {
+      allowed: false as const,
+      tier: 'general' as const,
       remaining: generalCheck.remaining,
       resetTime: generalCheck.resetTime,
-      retryAfter: generalCheck.retryAfter,
       warnings,
-    };
+    } as any;
+    if (generalCheck.retryAfter) {
+      result.retryAfter = generalCheck.retryAfter;
+    }
+    return result;
   }
 
   // All checks passed
@@ -375,13 +392,13 @@ export function detectThreats(request: NextRequest): {
   shouldBlock: boolean;
 } {
   const threats: string[] = [];
-  let threatLevel: 'none' | 'low' | 'medium' | 'high' | 'critical' = 'none';
+  let threatLevel: 'none' | 'low' | 'medium' | 'high' = 'none';
 
   // Check for proxy/VPN usage
   const clientKey = getClientKey(request);
   const ip = clientKey.split(':')[1];
   
-  if (isProxyOrVPN(ip)) {
+  if (ip && isProxyOrVPN(ip)) {
     threats.push('Request from proxy/VPN');
     threatLevel = 'medium';
   }
@@ -433,8 +450,7 @@ export function detectThreats(request: NextRequest): {
   }
 
   // Determine if should block
-  const shouldBlock = threatLevel === 'critical' || 
-                     (threatLevel === 'high' && threats.length > 1);
+  const shouldBlock = (threatLevel === 'high' && threats.length > 1);
 
   if (shouldBlock) {
     markSuspiciousActivity(request, threats.join(', '));

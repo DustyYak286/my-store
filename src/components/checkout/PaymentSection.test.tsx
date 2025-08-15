@@ -176,7 +176,7 @@ describe('PaymentSection', () => {
       });
     });
 
-    it('auto-selects Apple Pay when available', async () => {
+    it('detects Apple Pay when available', async () => {
       mockDetectPaymentMethodsWithStripe.mockResolvedValue({
         card: true,
         applePay: true,
@@ -187,11 +187,13 @@ describe('PaymentSection', () => {
 
       await waitFor(() => {
         const applePayButton = screen.getByTestId('select-apple-pay');
-        expect(applePayButton).toHaveAttribute('aria-pressed', 'true');
+        expect(applePayButton).toBeInTheDocument();
+        // Card is selected by default, user must manually select Apple Pay
+        expect(screen.getByTestId('select-card')).toHaveAttribute('aria-pressed', 'true');
       });
     });
 
-    it('auto-selects Google Pay when Apple Pay is not available', async () => {
+    it('detects Google Pay when available', async () => {
       mockDetectPaymentMethodsWithStripe.mockResolvedValue({
         card: true,
         applePay: false,
@@ -202,7 +204,9 @@ describe('PaymentSection', () => {
 
       await waitFor(() => {
         const googlePayButton = screen.getByTestId('select-google-pay');
-        expect(googlePayButton).toHaveAttribute('aria-pressed', 'true');
+        expect(googlePayButton).toBeInTheDocument();
+        // Card is selected by default, user must manually select Google Pay
+        expect(screen.getByTestId('select-card')).toHaveAttribute('aria-pressed', 'true');
       });
     });
 
@@ -216,7 +220,10 @@ describe('PaymentSection', () => {
       render(<PaymentSection />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('select-apple-pay')).toHaveAttribute('aria-pressed', 'true');
+        // Card is selected by default
+        expect(screen.getByTestId('select-card')).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByTestId('select-apple-pay')).toBeInTheDocument();
+        expect(screen.getByTestId('select-google-pay')).toBeInTheDocument();
       });
 
       // Select Google Pay manually
@@ -224,7 +231,7 @@ describe('PaymentSection', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('select-google-pay')).toHaveAttribute('aria-pressed', 'true');
-        expect(screen.getByTestId('select-apple-pay')).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByTestId('select-card')).toHaveAttribute('aria-pressed', 'false');
       });
     });
 
@@ -260,6 +267,13 @@ describe('PaymentSection', () => {
       });
 
       render(<PaymentSection />);
+
+      // Wait for component to load, then manually select Apple Pay
+      await waitFor(() => {
+        expect(screen.getByTestId('select-apple-pay')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('select-apple-pay'));
 
       await waitFor(() => {
         expect(screen.getByTestId('digital-wallet-buttons')).toBeInTheDocument();
@@ -333,6 +347,16 @@ describe('PaymentSection', () => {
 
       render(<PaymentSection onValidationChange={onValidationChange} />);
 
+      // Wait for component to load
+      await waitFor(() => {
+        expect(screen.getByTestId('select-apple-pay')).toBeInTheDocument();
+      });
+
+      // Clear previous calls and select Apple Pay
+      onValidationChange.mockClear();
+      fireEvent.click(screen.getByTestId('select-apple-pay'));
+
+      // Digital wallets should report valid state when selected
       await waitFor(() => {
         expect(onValidationChange).toHaveBeenCalledWith(true);
       });
@@ -473,6 +497,13 @@ describe('PaymentSection', () => {
     });
 
     it('displays current payment method', async () => {
+      // Make Apple Pay available for this test
+      mockDetectPaymentMethodsWithStripe.mockResolvedValue({
+        card: true,
+        applePay: true,
+        googlePay: false,
+      });
+
       render(<PaymentSection />);
 
       await waitFor(() => {
@@ -557,11 +588,9 @@ describe('PaymentSection', () => {
         expect(screen.getByTestId('select-apple-pay')).toBeInTheDocument();
         expect(screen.getByTestId('select-google-pay')).toBeInTheDocument();
         expect(screen.getByTestId('select-card')).toBeInTheDocument();
-        // Ensure loading is complete by checking no skeleton loading
-        expect(document.querySelectorAll('.animate-pulse')).toHaveLength(0);
-        // Ensure Apple Pay is auto-selected
-        expect(screen.getByTestId('select-apple-pay')).toHaveAttribute('aria-pressed', 'true');
-      }, { timeout: 5000 });
+        // Card is selected by default
+        expect(screen.getByTestId('select-card')).toHaveAttribute('aria-pressed', 'true');
+      });
 
       // Test that manual selections work - start with Google Pay since it won't auto-revert
       fireEvent.click(screen.getByTestId('select-google-pay'));

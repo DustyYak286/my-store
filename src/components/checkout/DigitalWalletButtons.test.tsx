@@ -3,12 +3,17 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { useStripe, useElements } from '@stripe/react-stripe-js';
 import DigitalWalletButtons from './DigitalWalletButtons';
 import { useCart } from '@/context/CartContext';
-import { useToast } from '@/hooks/useToast';
+import { usePaymentToast } from '@/hooks/useToast';
+import { monitoring } from '@/utils/monitoring';
 
 // Mock dependencies
 jest.mock('@stripe/react-stripe-js');
 jest.mock('@/context/CartContext');
-jest.mock('@/hooks/useToast');
+jest.mock('@/hooks/useToast', () => ({
+  useToast: jest.fn(),
+  usePaymentToast: jest.fn(),
+  useLegacyToast: jest.fn(),
+}));
 jest.mock('@/lib/stripe-client', () => ({
   logClientError: jest.fn(),
   generateIdempotencyKey: () => 'test-idempotency-key',
@@ -16,11 +21,19 @@ jest.mock('@/lib/stripe-client', () => ({
 jest.mock('@/constants/payments', () => ({
   formatCurrency: (amount: number) => `${amount.toFixed(2)} RON`,
 }));
+jest.mock('@/utils/monitoring', () => ({
+  monitoring: {
+    recordPaymentAttempt: jest.fn(),
+    recordPaymentSuccess: jest.fn(),
+    recordPaymentError: jest.fn(),
+    startTimer: jest.fn(() => jest.fn()), // Returns a stop function
+  },
+}));
 
 const mockUseStripe = useStripe as jest.MockedFunction<typeof useStripe>;
 const mockUseElements = useElements as jest.MockedFunction<typeof useElements>;
 const mockUseCart = useCart as jest.MockedFunction<typeof useCart>;
-const mockUseToast = useToast as jest.MockedFunction<typeof useToast>;
+const mockUsePaymentToast = usePaymentToast as jest.MockedFunction<typeof usePaymentToast>;
 
 // Mock Stripe instances
 const mockStripe = {
@@ -57,8 +70,15 @@ const mockCart = {
   clearCart: jest.fn(),
 };
 
-const mockToast = {
-  showToast: jest.fn(),
+const mockPaymentToast = {
+  showPaymentProcessing: jest.fn(() => 'toast-id-123'),
+  showPaymentError: jest.fn(() => 'toast-id-error'),
+  showPaymentSuccess: jest.fn(() => 'toast-id-success'),
+  showPaymentRetry: jest.fn(() => 'toast-id-retry'),
+  showAuthenticationRequired: jest.fn(() => 'toast-id-auth'),
+  showPaymentTimeout: jest.fn(() => 'toast-id-timeout'),
+  updatePaymentProgress: jest.fn(),
+  hideToast: jest.fn(),
 };
 
 describe('DigitalWalletButtons', () => {
@@ -68,9 +88,12 @@ describe('DigitalWalletButtons', () => {
     mockUseStripe.mockReturnValue(mockStripe as any);
     mockUseElements.mockReturnValue(mockElements as any);
     mockUseCart.mockReturnValue(mockCart as any);
-    mockUseToast.mockReturnValue(mockToast as any);
+    mockUsePaymentToast.mockReturnValue(mockPaymentToast as any);
     
     mockStripe.paymentRequest.mockReturnValue(mockPaymentRequest);
+    
+    // Ensure monitoring mock is properly setup after clearAllMocks
+    (monitoring.startTimer as jest.Mock).mockReturnValue(jest.fn());
     
     // Mock successful payment request availability
     mockPaymentRequest.canMakePayment.mockResolvedValue({
@@ -178,7 +201,7 @@ describe('DigitalWalletButtons', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Apple Pay Not Available')).toBeInTheDocument();
-        expect(screen.getByText(/use safari on an apple device/i)).toBeInTheDocument();
+        expect(screen.getByText(/Use Safari browser on iPhone, iPad, or Mac/i)).toBeInTheDocument();
       });
     });
 
@@ -196,7 +219,7 @@ describe('DigitalWalletButtons', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText('Apple Pay is not available on this device.')).toBeInTheDocument();
+        expect(screen.getByText('Apple Pay is not available on this device or browser.')).toBeInTheDocument();
       });
     });
   });
@@ -233,7 +256,7 @@ describe('DigitalWalletButtons', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Google Pay Not Available')).toBeInTheDocument();
-        expect(screen.getByText(/use chrome or edge browser/i)).toBeInTheDocument();
+        expect(screen.getByText(/Use Chrome, Edge, or Android browser/i)).toBeInTheDocument();
       });
     });
   });
@@ -347,10 +370,11 @@ describe('DigitalWalletButtons', () => {
       await waitFor(() => {
         expect(mockEvent.complete).toHaveBeenCalledWith('fail');
         expect(onPaymentError).toHaveBeenCalledWith('Your card was declined.');
-        expect(mockToast.showToast).toHaveBeenCalledWith({
-          type: 'error',
+        expect(mockPaymentToast.showPaymentError).toHaveBeenCalledWith({
           message: 'Your card was declined.',
-          duration: 5000,
+          category: 'card',
+          isRetryable: false,
+          severity: 'high',
         });
       });
     });
@@ -571,6 +595,197 @@ describe('DigitalWalletButtons', () => {
       unmount();
 
       expect(mockPaymentRequest.off).toHaveBeenCalledWith('paymentmethod', expect.any(Function));
+    });
+  });
+
+  describe('Monitoring Integration', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      
+      // Ensure monitoring mock is properly setup
+      (monitoring.startTimer as jest.Mock).mockReturnValue(jest.fn());
+      
+      // Mock successful payment flow
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          clientSecret: 'pi_test_client_secret',
+          orderId: 'order_test_123',
+        }),
+      });
+
+      mockStripe.confirmCardPayment.mockResolvedValue({
+        paymentIntent: {
+          id: 'pi_test_123',
+          status: 'succeeded',
+        },
+        error: null,
+      });
+    });
+
+    it('records payment attempt when digital wallet payment starts', async () => {
+      render(
+        <DigitalWalletButtons
+          selectedMethod="apple_pay"
+          amount={67.48}
+          onPaymentStart={() => {}}
+          onPaymentSuccess={() => {}}
+          onPaymentError={() => {}}
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockPaymentRequest.on).toHaveBeenCalledWith('paymentmethod', expect.any(Function));
+      });
+
+      const paymentMethodHandler = mockPaymentRequest.on.mock.calls[0][1];
+      const mockEvent = {
+        complete: jest.fn(),
+        paymentMethod: { id: 'pm_test_123' },
+      };
+
+      await paymentMethodHandler(mockEvent);
+
+      expect(monitoring.recordPaymentAttempt).toHaveBeenCalled();
+    });
+
+    it('records successful digital wallet payment', async () => {
+      render(
+        <DigitalWalletButtons
+          selectedMethod="google_pay"
+          amount={67.48}
+          onPaymentStart={() => {}}
+          onPaymentSuccess={() => {}}
+          onPaymentError={() => {}}
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockPaymentRequest.on).toHaveBeenCalledWith('paymentmethod', expect.any(Function));
+      });
+
+      const paymentMethodHandler = mockPaymentRequest.on.mock.calls[0][1];
+      const mockEvent = {
+        complete: jest.fn(),
+        paymentMethod: { id: 'pm_test_123' },
+      };
+
+      await paymentMethodHandler(mockEvent);
+
+      expect(monitoring.recordPaymentSuccess).toHaveBeenCalled();
+      expect(mockEvent.complete).toHaveBeenCalledWith('success');
+    });
+
+    it('records payment error for failed status', async () => {
+      // Mock payment with requires_payment_method status (failure)
+      mockStripe.confirmCardPayment.mockResolvedValue({
+        paymentIntent: {
+          id: 'pi_test_123',
+          status: 'requires_payment_method',
+        },
+        error: null,
+      });
+
+      render(
+        <DigitalWalletButtons
+          selectedMethod="apple_pay"
+          amount={67.48}
+          onPaymentStart={() => {}}
+          onPaymentSuccess={() => {}}
+          onPaymentError={() => {}}
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockPaymentRequest.on).toHaveBeenCalledWith('paymentmethod', expect.any(Function));
+      });
+
+      const paymentMethodHandler = mockPaymentRequest.on.mock.calls[0][1];
+      const mockEvent = {
+        complete: jest.fn(),
+        paymentMethod: { id: 'pm_test_123' },
+      };
+
+      await paymentMethodHandler(mockEvent);
+
+      expect(monitoring.recordPaymentError).toHaveBeenCalledWith(
+        'digital_wallet_status_failure',
+        expect.objectContaining({
+          paymentStatus: 'requires_payment_method',
+          selectedMethod: 'apple_pay',
+          amount: 67.48,
+        })
+      );
+      expect(mockEvent.complete).toHaveBeenCalledWith('fail');
+    });
+
+    it('records payment error for exceptions', async () => {
+      // Mock payment intent creation failure
+      global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+
+      render(
+        <DigitalWalletButtons
+          selectedMethod="google_pay"
+          amount={67.48}
+          onPaymentStart={() => {}}
+          onPaymentSuccess={() => {}}
+          onPaymentError={() => {}}
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockPaymentRequest.on).toHaveBeenCalledWith('paymentmethod', expect.any(Function));
+      });
+
+      const paymentMethodHandler = mockPaymentRequest.on.mock.calls[0][1];
+      const mockEvent = {
+        complete: jest.fn(),
+        paymentMethod: { id: 'pm_test_123' },
+      };
+
+      await paymentMethodHandler(mockEvent);
+
+      expect(monitoring.recordPaymentError).toHaveBeenCalledWith(
+        'digital_wallet_exception',
+        expect.objectContaining({
+          errorMessage: 'Network error',
+          selectedMethod: 'google_pay',
+          amount: 67.48,
+          context: 'digital_wallet_payment_processing',
+        })
+      );
+      expect(mockEvent.complete).toHaveBeenCalledWith('fail');
+    });
+
+    it('starts and stops payment processing timer', async () => {
+      const mockStopTimer = jest.fn();
+      (monitoring.startTimer as jest.Mock).mockReturnValue(mockStopTimer);
+
+      render(
+        <DigitalWalletButtons
+          selectedMethod="apple_pay"
+          amount={67.48}
+          onPaymentStart={() => {}}
+          onPaymentSuccess={() => {}}
+          onPaymentError={() => {}}
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockPaymentRequest.on).toHaveBeenCalledWith('paymentmethod', expect.any(Function));
+      });
+
+      const paymentMethodHandler = mockPaymentRequest.on.mock.calls[0][1];
+      const mockEvent = {
+        complete: jest.fn(),
+        paymentMethod: { id: 'pm_test_123' },
+      };
+
+      await paymentMethodHandler(mockEvent);
+
+      expect(monitoring.startTimer).toHaveBeenCalledWith('client.payment_processing');
+      expect(mockStopTimer).toHaveBeenCalled();
     });
   });
 });

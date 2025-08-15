@@ -168,7 +168,7 @@ describe('Request Structure Validation', () => {
 
   it('should validate required customer information', () => {
     const invalidData = { ...validRequestData };
-    delete invalidData.customerInfo;
+    delete (invalidData as any).customerInfo;
 
     const result = validateRequestStructure(invalidData);
     

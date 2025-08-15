@@ -17,8 +17,8 @@ interface PaymentErrorBoundaryProps {
 
 interface PaymentErrorBoundaryState {
   hasError: boolean;
-  error?: Error;
-  errorInfo?: ErrorInfo;
+  error?: Error | undefined;
+  errorInfo?: ErrorInfo | undefined;
   retryCount: number;
   isRetrying: boolean;
   errorId: string | null;
@@ -70,7 +70,7 @@ export class PaymentErrorBoundary extends Component<PaymentErrorBoundaryProps, P
       errorMessage: error.message,
       errorId: this.state.errorId,
       retryCount: this.state.retryCount,
-      componentStack: errorInfo.componentStack.split('\n')[1] || 'Unknown',
+      componentStack: errorInfo.componentStack?.split('\n')[1] || 'Unknown',
     });
 
     // Call optional error handler

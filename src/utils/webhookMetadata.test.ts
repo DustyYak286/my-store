@@ -209,12 +209,18 @@ describe('Webhook Metadata Utilities', () => {
 
     it('should include full metadata in development mode', () => {
       const originalEnv = process.env.NODE_ENV;
+      
+      // Set NODE_ENV to development
       process.env.NODE_ENV = 'development';
       
+      consoleSpy.mockClear(); // Clear previous calls
       logWebhookProcessing(validMetadata, 'payment_intent.succeeded', 'evt_test_123');
       
+      
+      // Check that the full metadata log was called
       expect(consoleSpy).toHaveBeenCalledWith('   Full Metadata:', expect.any(String));
       
+      // Restore
       process.env.NODE_ENV = originalEnv;
     });
   });

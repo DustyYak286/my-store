@@ -30,8 +30,8 @@ import {
   OrderSource,
   type CreateOrderRequest,
   type Order,
-  type CartItem,
 } from '@/types/order';
+import type { CartItem } from '@/types/cart';
 
 describe('Order ID and Number Generation', () => {
   describe('generateOrderNumber', () => {

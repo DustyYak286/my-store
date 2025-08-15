@@ -233,33 +233,112 @@ export const handleNextAction = async (
 // ====== ERROR HANDLING ======
 
 /**
- * Categorize client-side Stripe errors for better UX
+ * Enhanced categorization of client-side Stripe errors with specific scenario handling
  * @param error Stripe error from client-side operations
  * @returns Error category and user-friendly information
  */
 export const categorizeClientStripeError = (error: StripeError): {
-  category: 'card' | 'authentication' | 'network' | 'validation' | 'unknown';
+  category: 'card' | 'authentication' | 'network' | 'validation' | 'rate_limit' | 'unknown';
   isRetryable: boolean;
   userMessage: string;
   severity: 'low' | 'medium' | 'high';
+  retryDelay?: number;
+  maxRetries?: number;
+  subCategory?: string;
 } => {
-  const { type, code } = error;
+  const { type, code, message } = error;
   
-  // Card errors - user can potentially fix
+  // Card errors - distinguish between declined vs failed
   if (type === 'card_error') {
-    const cardMessages: Record<string, string> = {
-      'card_declined': 'Your card was declined. Please try a different payment method.',
-      'insufficient_funds': 'Insufficient funds. Please try a different card.',
-      'expired_card': 'Your card has expired. Please use a different card.',
-      'incorrect_cvc': 'Your card\'s security code is incorrect. Please check and try again.',
-      'processing_error': 'There was an error processing your card. Please try again.',
-      'incorrect_number': 'Your card number is incorrect. Please check and try again.',
-    };
+    // Declined cards (issuer-side rejections) - not retryable
+    const declinedCodes = [
+      'card_declined', 'insufficient_funds', 'expired_card', 
+      'lost_card', 'stolen_card', 'pickup_card', 'restricted_card',
+      'security_violation', 'service_not_allowed', 'transaction_not_allowed'
+    ];
     
+    // Processing errors (temporary issues) - retryable
+    const processingCodes = [
+      'processing_error', 'issuer_not_available', 'reenter_transaction',
+      'try_again_later', 'do_not_honor', 'generic_decline'
+    ];
+    
+    // Validation errors (user fixable) - retryable with user action
+    const validationCodes = [
+      'incorrect_cvc', 'incorrect_number', 'incorrect_zip',
+      'invalid_cvc', 'invalid_expiry_month', 'invalid_expiry_year',
+      'invalid_number', 'missing', 'parameter_invalid_empty',
+      'parameter_invalid_integer', 'parameter_invalid_string_empty'
+    ];
+    
+    if (declinedCodes.includes(code || '')) {
+      const declinedMessages: Record<string, string> = {
+        'card_declined': 'Your card was declined by your bank. Please try a different payment method.',
+        'insufficient_funds': 'Insufficient funds. Please check your account balance or try a different card.',
+        'expired_card': 'Your card has expired. Please use a different card.',
+        'lost_card': 'This card has been reported as lost. Please use a different payment method.',
+        'stolen_card': 'This card has been reported as stolen. Please use a different payment method.',
+        'pickup_card': 'Your card cannot be used for online payments. Please try a different card.',
+        'restricted_card': 'Your card has restrictions that prevent this payment. Please try a different card.',
+        'security_violation': 'Payment blocked for security reasons. Please contact your bank or try a different card.',
+      };
+      
+      return {
+        category: 'card',
+        subCategory: 'declined',
+        isRetryable: false,
+        userMessage: declinedMessages[code || ''] || 'Your card was declined. Please try a different payment method.',
+        severity: 'medium',
+      };
+    }
+    
+    if (processingCodes.includes(code || '')) {
+      const processingMessages: Record<string, string> = {
+        'processing_error': 'Temporary processing error. Please try again in a moment.',
+        'issuer_not_available': 'Your bank is temporarily unavailable. Please try again.',
+        'reenter_transaction': 'Please try your payment again.',
+        'try_again_later': 'Temporary issue with your card. Please try again in a few minutes.',
+        'do_not_honor': 'Payment declined by your bank. This is often temporary - please try again.',
+        'generic_decline': 'Payment temporarily declined. Please try again or use a different card.',
+      };
+      
+      return {
+        category: 'card',
+        subCategory: 'processing_error',
+        isRetryable: true,
+        userMessage: processingMessages[code || ''] || 'Temporary card processing error. Please try again.',
+        severity: 'medium',
+        retryDelay: 2000, // 2 second delay for processing errors
+        maxRetries: 2,
+      };
+    }
+    
+    if (validationCodes.includes(code || '')) {
+      const validationMessages: Record<string, string> = {
+        'incorrect_cvc': 'Your card\'s security code (CVC) is incorrect. Please check and try again.',
+        'incorrect_number': 'Your card number is incorrect. Please check and try again.',
+        'incorrect_zip': 'Your postal/ZIP code doesn\'t match your card. Please check and try again.',
+        'invalid_cvc': 'Please enter a valid security code (CVC).',
+        'invalid_expiry_month': 'Please enter a valid expiry month.',
+        'invalid_expiry_year': 'Please enter a valid expiry year.',
+        'invalid_number': 'Please enter a valid card number.',
+      };
+      
+      return {
+        category: 'validation',
+        subCategory: 'card_validation',
+        isRetryable: true,
+        userMessage: validationMessages[code || ''] || 'Please check your card information and try again.',
+        severity: 'low',
+      };
+    }
+    
+    // Fallback for other card errors
     return {
       category: 'card',
+      subCategory: 'unknown',
       isRetryable: code === 'processing_error',
-      userMessage: cardMessages[code || ''] || 'Your card was declined. Please try a different payment method.',
+      userMessage: 'Card payment failed. Please check your information or try a different card.',
       severity: 'medium',
     };
   }
@@ -274,43 +353,118 @@ export const categorizeClientStripeError = (error: StripeError): {
     };
   }
   
-  // API connection errors - network issues
+  // API connection errors - enhanced network timeout handling
   if (type === 'api_connection_error') {
+    // Detect timeout vs connection issues
+    const isTimeout = message?.toLowerCase().includes('timeout') || 
+                     message?.toLowerCase().includes('timed out');
+    
+    if (isTimeout) {
+      return {
+        category: 'network',
+        subCategory: 'timeout',
+        isRetryable: true,
+        userMessage: 'Connection timed out. Please check your internet and try again.',
+        severity: 'medium',
+        retryDelay: 3000, // 3 second delay for timeouts
+        maxRetries: 3,
+      };
+    }
+    
     return {
       category: 'network',
+      subCategory: 'connection_error',
       isRetryable: true,
-      userMessage: 'Network error. Please check your connection and try again.',
+      userMessage: 'Network connection error. Please check your internet and try again.',
       severity: 'medium',
+      retryDelay: 2000,
+      maxRetries: 3,
     };
   }
   
-  // API errors - server issues
+  // API errors - distinguish server vs client issues
   if (type === 'api_error') {
+    // Check for specific server error patterns
+    const isServerOverload = message?.includes('503') || 
+                            message?.toLowerCase().includes('service unavailable') ||
+                            message?.toLowerCase().includes('temporarily unavailable');
+    
+    const isInternalError = message?.includes('500') ||
+                           message?.toLowerCase().includes('internal server error');
+    
+    if (isServerOverload) {
+      return {
+        category: 'network',
+        subCategory: 'server_overload',
+        isRetryable: true,
+        userMessage: 'Payment service is busy. Please try again in a moment.',
+        severity: 'high',
+        retryDelay: 10000, // 10 second delay for server overload
+        maxRetries: 2,
+      };
+    }
+    
+    if (isInternalError) {
+      return {
+        category: 'network',
+        subCategory: 'server_error',
+        isRetryable: true,
+        userMessage: 'Payment service error. Please try again.',
+        severity: 'high',
+        retryDelay: 5000, // 5 second delay for server errors
+        maxRetries: 2,
+      };
+    }
+    
     return {
       category: 'network',
+      subCategory: 'api_error',
       isRetryable: true,
       userMessage: 'Payment service temporarily unavailable. Please try again.',
       severity: 'high',
+      retryDelay: 3000,
+      maxRetries: 2,
     };
   }
   
-  // Authentication errors - 3D Secure, etc.
+  // Authentication errors - enhanced 3D Secure handling
   if (type === 'authentication_error') {
+    // Specific 3D Secure error handling
+    if (message?.toLowerCase().includes('3d secure') || 
+        message?.toLowerCase().includes('authentication') ||
+        code === 'authentication_required') {
+      return {
+        category: 'authentication',
+        subCategory: '3d_secure_failed',
+        isRetryable: true,
+        userMessage: 'Card authentication failed. Please verify with your bank and try again.',
+        severity: 'medium',
+        retryDelay: 3000, // 3 second delay for auth retries
+        maxRetries: 2,
+      };
+    }
+    
     return {
       category: 'authentication',
+      subCategory: 'general_auth_error',
       isRetryable: true,
-      userMessage: 'Authentication failed. Please try again.',
+      userMessage: 'Payment authentication failed. Please try again.',
       severity: 'medium',
+      retryDelay: 2000,
+      maxRetries: 2,
     };
   }
   
-  // Rate limit errors
+  // Rate limit errors - intelligent retry delays
   if (type === 'rate_limit_error') {
     return {
-      category: 'network',
+      category: 'rate_limit',
+      subCategory: 'api_rate_limit',
       isRetryable: true,
-      userMessage: 'Too many requests. Please wait a moment and try again.',
+      userMessage: 'Too many payment attempts. Please wait a moment and try again.',
       severity: 'medium',
+      retryDelay: 5000, // 5 second base delay for rate limits
+      maxRetries: 2,
     };
   }
   
@@ -324,11 +478,39 @@ export const categorizeClientStripeError = (error: StripeError): {
     };
   }
   
-  // Unknown errors
+  // Browser-specific payment method errors
+  if (message?.toLowerCase().includes('payment method not available') ||
+      message?.toLowerCase().includes('apple pay') ||
+      message?.toLowerCase().includes('google pay')) {
+    return {
+      category: 'validation',
+      subCategory: 'payment_method_unavailable',
+      isRetryable: false,
+      userMessage: 'This payment method is not available. Please try card payment instead.',
+      severity: 'low',
+    };
+  }
+  
+  // Handle payment intent creation failures
+  if (message?.toLowerCase().includes('payment intent') ||
+      message?.toLowerCase().includes('intent creation')) {
+    return {
+      category: 'network',
+      subCategory: 'payment_intent_error',
+      isRetryable: true,
+      userMessage: 'Failed to initialize payment. Please try again.',
+      severity: 'medium',
+      retryDelay: 2000,
+      maxRetries: 2,
+    };
+  }
+  
+  // Unknown errors with enhanced context
   return {
     category: 'unknown',
+    subCategory: 'unhandled_error',
     isRetryable: false,
-    userMessage: 'An unexpected error occurred. Please try again or contact support.',
+    userMessage: 'An unexpected error occurred. Please refresh the page or contact support.',
     severity: 'high',
   };
 };
@@ -378,7 +560,7 @@ export const detectAvailablePaymentMethods = (): {
     if (isAppleDevice && (isSafari || (window as any).PaymentRequest)) {
       // Try to check Apple Pay availability
       if (window.ApplePaySession) {
-        applePaySupported = window.ApplePaySession.canMakePayments() === true;
+        applePaySupported = window.ApplePaySession.canMakePayments?.() === true;
       } else {
         // Fallback: assume available on Safari on Apple devices
         applePaySupported = isSafari;

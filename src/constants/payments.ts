@@ -46,6 +46,51 @@ export const RETRY_CONFIG = {
   
   // Maximum delay between retries (in milliseconds)
   MAX_DELAY: 30000,
+  
+  // Specific retry configurations by error category
+  CATEGORY_SPECIFIC: {
+    // Card processing errors - quick retry
+    PROCESSING_ERROR: {
+      maxAttempts: 2,
+      baseDelay: 2000,
+      backoffMultiplier: 1.5,
+    },
+    
+    // Network timeouts - longer delays
+    TIMEOUT: {
+      maxAttempts: 3,
+      baseDelay: 3000,
+      backoffMultiplier: 2,
+    },
+    
+    // Rate limiting - exponential backoff
+    RATE_LIMIT: {
+      maxAttempts: 2,
+      baseDelay: 5000,
+      backoffMultiplier: 2,
+    },
+    
+    // Authentication errors - moderate retry
+    AUTHENTICATION: {
+      maxAttempts: 2,
+      baseDelay: 3000,
+      backoffMultiplier: 1.5,
+    },
+    
+    // Server errors - longer delays
+    SERVER_ERROR: {
+      maxAttempts: 2,
+      baseDelay: 5000,
+      backoffMultiplier: 2,
+    },
+    
+    // Server overload - very long delays
+    SERVER_OVERLOAD: {
+      maxAttempts: 2,
+      baseDelay: 10000,
+      backoffMultiplier: 1.5,
+    },
+  },
 } as const;
 
 // ====== TIMEOUT CONFIGURATION ======
@@ -143,27 +188,62 @@ export const PAYMENT_ERROR_MESSAGES = {
   NETWORK_ERROR: 'Network error. Please check your connection and try again.',
   TIMEOUT_ERROR: 'Payment timed out. Please try again.',
   
-  // Card-specific errors
+  // Card-specific errors - declined (not retryable)
   CARD_DECLINED: 'Your card was declined. Please try a different payment method.',
   INSUFFICIENT_FUNDS: 'Insufficient funds. Please try a different payment method.',
   EXPIRED_CARD: 'Your card has expired. Please try a different payment method.',
-  INCORRECT_CVC: 'Your card\'s security code is incorrect. Please try again.',
-  PROCESSING_ERROR: 'Error processing your card. Please try again.',
+  LOST_CARD: 'This card has been reported as lost. Please use a different payment method.',
+  STOLEN_CARD: 'This card has been reported as stolen. Please use a different payment method.',
+  RESTRICTED_CARD: 'Your card has restrictions that prevent this payment. Please try a different card.',
   
-  // Authentication errors
+  // Card-specific errors - validation (user fixable)
+  INCORRECT_CVC: 'Your card\'s security code is incorrect. Please try again.',
+  INCORRECT_NUMBER: 'Your card number is incorrect. Please check and try again.',
+  INCORRECT_ZIP: 'Your postal/ZIP code doesn\'t match your card. Please check and try again.',
+  INVALID_EXPIRY: 'Your card expiry date is invalid. Please check and try again.',
+  
+  // Card-specific errors - processing (retryable)
+  PROCESSING_ERROR: 'Temporary processing error. Please try again in a moment.',
+  ISSUER_UNAVAILABLE: 'Your bank is temporarily unavailable. Please try again.',
+  TEMPORARY_DECLINE: 'Payment temporarily declined. Please try again or use a different card.',
+  
+  // Authentication errors - 3D Secure specific
   AUTHENTICATION_REQUIRED: 'Additional authentication required. Please complete the verification.',
   AUTHENTICATION_FAILED: 'Authentication failed. Please try again.',
+  THREEDS_FAILED: 'Card authentication failed. Please verify with your bank and try again.',
+  THREEDS_TIMEOUT: '3D Secure authentication timed out. Please try again.',
+  
+  // Network-specific errors
+  CONNECTION_TIMEOUT: 'Connection timed out. Please check your internet and try again.',
+  CONNECTION_ERROR: 'Network connection error. Please check your internet and try again.',
+  SERVER_OVERLOAD: 'Payment service is busy. Please try again in a moment.',
+  SERVER_ERROR: 'Payment service error. Please try again.',
+  
+  // Rate limiting with specific delays
+  RATE_LIMITED: 'Too many payment attempts. Please wait a moment and try again.',
+  RATE_LIMITED_WITH_DELAY: (seconds: number) => `Too many requests. Please wait ${seconds} seconds and try again.`,
+  
+  // Payment method specific
+  APPLE_PAY_UNAVAILABLE: 'Apple Pay is not available. Please try card payment instead.',
+  GOOGLE_PAY_UNAVAILABLE: 'Google Pay is not available. Please try card payment instead.',
+  PAYMENT_METHOD_UNAVAILABLE: 'This payment method is not available. Please try card payment instead.',
   
   // Amount errors
   AMOUNT_TOO_SMALL: `Minimum payment amount is ${PAYMENT_LIMITS.MIN_AMOUNT_DISPLAY} ${CURRENCY_CONFIG.code}.`,
   AMOUNT_TOO_LARGE: `Maximum payment amount is ${PAYMENT_LIMITS.MAX_AMOUNT_DISPLAY} ${CURRENCY_CONFIG.code}.`,
   
-  // Rate limiting
-  RATE_LIMITED: 'Too many requests. Please wait a moment and try again.',
+  // Payment intent errors
+  INTENT_CREATION_FAILED: 'Failed to initialize payment. Please try again.',
+  INTENT_CONFIRMATION_FAILED: 'Failed to confirm payment. Please try again.',
+  
+  // Browser/device specific
+  BROWSER_NOT_SUPPORTED: 'Your browser doesn\'t support this payment method. Please try card payment.',
+  DEVICE_NOT_SUPPORTED: 'Your device doesn\'t support this payment method. Please try card payment.',
   
   // Retry messages
   RETRY_EXHAUSTED: `Maximum attempts reached (${RETRY_CONFIG.MAX_ATTEMPTS}). Please try again later.`,
   RETRY_AVAILABLE: 'Payment failed. Please try again.',
+  RETRY_WITH_DELAY: (seconds: number) => `Retrying in ${seconds} seconds...`,
 } as const;
 
 // ====== SUCCESS MESSAGES ======
@@ -285,11 +365,65 @@ export const validatePaymentAmount = (amount: number): {
 /**
  * Calculate retry delay with exponential backoff
  * @param attempt Current attempt number (1-based)
+ * @param category Optional error category for specific retry logic
  * @returns Delay in milliseconds
  */
-export const calculateRetryDelay = (attempt: number): number => {
+export const calculateRetryDelay = (
+  attempt: number,
+  category?: keyof typeof RETRY_CONFIG.CATEGORY_SPECIFIC
+): number => {
+  // Use category-specific configuration if available
+  if (category && RETRY_CONFIG.CATEGORY_SPECIFIC[category]) {
+    const config = RETRY_CONFIG.CATEGORY_SPECIFIC[category];
+    const delay = config.baseDelay * Math.pow(config.backoffMultiplier, attempt - 1);
+    return Math.min(delay, RETRY_CONFIG.MAX_DELAY);
+  }
+  
+  // Default exponential backoff
   const delay = RETRY_CONFIG.BASE_DELAY * Math.pow(RETRY_CONFIG.BACKOFF_MULTIPLIER, attempt - 1);
   return Math.min(delay, RETRY_CONFIG.MAX_DELAY);
+};
+
+/**
+ * Get maximum retry attempts for a specific error category
+ * @param category Error category
+ * @returns Maximum retry attempts allowed
+ */
+export const getMaxRetriesForCategory = (
+  category?: keyof typeof RETRY_CONFIG.CATEGORY_SPECIFIC
+): number => {
+  if (category && RETRY_CONFIG.CATEGORY_SPECIFIC[category]) {
+    return RETRY_CONFIG.CATEGORY_SPECIFIC[category].maxAttempts;
+  }
+  return RETRY_CONFIG.MAX_ATTEMPTS;
+};
+
+/**
+ * Determine if an error category is retryable
+ * @param category Error category
+ * @param subCategory Error subcategory
+ * @returns Whether the error should be retried
+ */
+export const isErrorRetryable = (
+  category: string,
+  subCategory?: string
+): boolean => {
+  // Never retry declined cards
+  if (category === 'card' && subCategory === 'declined') {
+    return false;
+  }
+  
+  // Never retry validation errors that aren't user-fixable
+  if (category === 'validation' && subCategory === 'payment_method_unavailable') {
+    return false;
+  }
+  
+  // Retry network, processing, authentication, and rate limit errors
+  const retryableCategories = ['network', 'authentication', 'rate_limit'];
+  const retryableSubCategories = ['processing_error', 'card_validation'];
+  
+  return retryableCategories.includes(category) || 
+         (subCategory && retryableSubCategories.includes(subCategory));
 };
 
 /**
@@ -349,6 +483,34 @@ export const isPaymentMethodSupported = (method: string): method is typeof STRIP
   return STRIPE_CONFIG.PAYMENT_METHODS.includes(method as any);
 };
 
+// ====== ERROR CATEGORIZATION TYPES ======
+
+export type ErrorCategory = 'card' | 'authentication' | 'network' | 'validation' | 'rate_limit' | 'unknown';
+export type ErrorSubCategory = 
+  | 'declined' | 'processing_error' | 'card_validation'
+  | '3d_secure_failed' | 'general_auth_error'
+  | 'timeout' | 'connection_error' | 'server_overload' | 'server_error' | 'api_error' | 'payment_intent_error'
+  | 'payment_method_unavailable' | 'browser_not_supported'
+  | 'api_rate_limit'
+  | 'unhandled_error';
+
+export type ErrorSeverity = 'low' | 'medium' | 'high';
+
+export interface EnhancedPaymentError {
+  category: ErrorCategory;
+  subCategory?: ErrorSubCategory;
+  isRetryable: boolean;
+  userMessage: string;
+  severity: ErrorSeverity;
+  retryDelay?: number;
+  maxRetries?: number;
+  timestamp: number;
+  attempt: number;
+  code?: string;
+  type?: string;
+}
+
 // Type exports for better TypeScript integration
 export type PaymentMethod = typeof STRIPE_CONFIG.PAYMENT_METHODS[number];
 export type WebhookEvent = typeof WEBHOOK_CONFIG.HANDLED_EVENTS[number];
+export type RetryCategory = keyof typeof RETRY_CONFIG.CATEGORY_SPECIFIC;

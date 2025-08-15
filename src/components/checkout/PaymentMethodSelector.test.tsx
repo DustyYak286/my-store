@@ -44,8 +44,12 @@ describe('PaymentMethodSelector', () => {
       );
 
       expect(screen.getByText('Card')).toBeInTheDocument();
-      expect(screen.queryByText('Apple Pay')).not.toBeInTheDocument();
+      expect(screen.getByText('Apple Pay')).toBeInTheDocument(); // Always rendered but disabled
       expect(screen.getByText('Google Pay')).toBeInTheDocument();
+      
+      // Check that Apple Pay is disabled
+      const applePayButton = screen.getByRole('button', { name: /apple pay/i });
+      expect(applePayButton).toBeDisabled();
     });
 
     it('shows no payment methods message when none are available', () => {
@@ -60,10 +64,19 @@ describe('PaymentMethodSelector', () => {
         />
       );
 
-      expect(screen.getByText('No payment methods available')).toBeInTheDocument();
-      expect(screen.queryByText('Card')).not.toBeInTheDocument();
-      expect(screen.queryByText('Apple Pay')).not.toBeInTheDocument();
-      expect(screen.queryByText('Google Pay')).not.toBeInTheDocument();
+      // All payment methods are still rendered but all disabled
+      expect(screen.getByText('Card')).toBeInTheDocument();
+      expect(screen.getByText('Apple Pay')).toBeInTheDocument();
+      expect(screen.getByText('Google Pay')).toBeInTheDocument();
+      
+      // Check that all buttons are disabled
+      const cardButton = screen.getByRole('button', { name: /card/i });
+      const applePayButton = screen.getByRole('button', { name: /apple pay/i });
+      const googlePayButton = screen.getByRole('button', { name: /google pay/i });
+      
+      expect(cardButton).toBeDisabled();
+      expect(applePayButton).toBeDisabled();
+      expect(googlePayButton).toBeDisabled();
     });
   });
 
@@ -278,7 +291,7 @@ describe('PaymentMethodSelector', () => {
     it('has proper responsive grid layout', () => {
       render(<PaymentMethodSelector {...defaultProps} />);
 
-      const grid = screen.getAllByRole('button')[0].parentElement;
+      const grid = screen.getAllByRole('button')[0]?.parentElement;
       expect(grid).toHaveClass('grid', 'grid-cols-1', 'sm:grid-cols-2', 'lg:grid-cols-3', 'gap-3');
     });
   });
@@ -296,9 +309,19 @@ describe('PaymentMethodSelector', () => {
         />
       );
 
+      // All payment methods are shown, but only card is enabled
       const buttons = screen.getAllByRole('button');
-      expect(buttons).toHaveLength(1);
+      expect(buttons).toHaveLength(3);
       expect(screen.getByText('Card')).toBeInTheDocument();
+      
+      // Check that only card button is enabled
+      const cardButton = screen.getByRole('button', { name: /card/i });
+      const applePayButton = screen.getByRole('button', { name: /apple pay/i });
+      const googlePayButton = screen.getByRole('button', { name: /google pay/i });
+      
+      expect(cardButton).not.toBeDisabled();
+      expect(applePayButton).toBeDisabled();
+      expect(googlePayButton).toBeDisabled();
     });
 
     it('handles rapid method changes', () => {
@@ -347,10 +370,14 @@ describe('PaymentMethodSelector', () => {
         />
       );
 
-      // Apple Pay should no longer be visible
-      expect(screen.queryByText('Apple Pay')).not.toBeInTheDocument();
+      // Apple Pay should still be visible but disabled
+      expect(screen.getByText('Apple Pay')).toBeInTheDocument();
       expect(screen.getByText('Card')).toBeInTheDocument();
       expect(screen.getByText('Google Pay')).toBeInTheDocument();
+      
+      // Check that Apple Pay is now disabled
+      const applePayButton = screen.getByRole('button', { name: /apple pay/i });
+      expect(applePayButton).toBeDisabled();
     });
   });
 });

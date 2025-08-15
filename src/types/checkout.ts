@@ -65,12 +65,10 @@ export interface UseCheckoutFormReturn {
   formData: FormData
   errors: FormErrors
   touched: FormTouched
-  isSubmitting: boolean
   isFormValid: boolean
   handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void
   handleBlur: (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => void
   handleSameAsShippingChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-  handleSubmit: (e: React.FormEvent) => Promise<void>
   validateForm: () => boolean
 }
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import CartModal from './CartModal';
+import type { CartItem } from '@/types/cart';
 
 // Mock the useRouter hook from Next.js
 const mockPush = jest.fn();
@@ -12,7 +13,7 @@ jest.mock('next/navigation', () => ({
 
 // Mock the useCart hook directly
 const mockCartContext = {
-  cartItems: [],
+  cartItems: [] as CartItem[],
   cartCount: 0,
   totalPrice: 0,
   addToCart: jest.fn(),

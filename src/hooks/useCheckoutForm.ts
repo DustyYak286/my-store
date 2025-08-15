@@ -1,21 +1,14 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useCart } from "@/context/CartContext";
-import { useToast } from "@/hooks/useToast";
 import { checkoutConfig } from "@/config/checkout";
 import type { FormData, ValidationRules, FormErrors, FormTouched, UseCheckoutFormReturn } from "@/types/checkout";
 
 /**
- * Custom hook for managing checkout form state, validation, and submission
- * Centralizes all form logic for better maintainability
+ * Custom hook for managing checkout form state and validation
+ * Centralizes form logic for better maintainability
  */
 export const useCheckoutForm = (): UseCheckoutFormReturn => {
-  const router = useRouter();
-  const { clearCart } = useCart();
-  const { showToast } = useToast();
-  
   const [formData, setFormData] = useState<FormData>({
     email: "",
     shippingFullName: "",
@@ -33,7 +26,6 @@ export const useCheckoutForm = (): UseCheckoutFormReturn => {
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<FormTouched>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
 
   // Validation rules for each field - consolidated into single source of truth
@@ -305,48 +297,14 @@ export const useCheckoutForm = (): UseCheckoutFormReturn => {
     return isValid;
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Simulate processing delay
-      await new Promise(resolve => setTimeout(resolve, checkoutConfig.processingDelay));
-      
-      // Clear the cart
-      clearCart();
-      
-      // Show success toast
-      showToast(checkoutConfig.messages.orderSuccess, "success");
-      
-      // Redirect to homepage after a short delay
-      setTimeout(() => {
-        router.push("/");
-      }, checkoutConfig.redirectDelay);
-      
-    } catch (error) {
-      showToast(checkoutConfig.messages.orderError, "error");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return {
     formData,
     errors,
     touched,
-    isSubmitting,
     isFormValid,
     handleChange,
     handleBlur,
     handleSameAsShippingChange,
-    handleSubmit,
     validateForm
   };
 };

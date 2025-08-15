@@ -92,7 +92,7 @@ describe('CardPaymentForm', () => {
       
       // Verify the first call's first argument contains the expected props
       const firstCall = mockPaymentElement.mock.calls[0];
-      const props = firstCall[0];
+      const props = firstCall?.[0];
       
       expect(props).toMatchObject({
         id: 'payment-element',

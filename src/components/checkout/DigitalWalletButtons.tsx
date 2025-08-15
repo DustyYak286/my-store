@@ -4,10 +4,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useStripe, useElements, PaymentRequestButtonElement } from '@stripe/react-stripe-js';
 import { PaymentRequest, PaymentRequestPaymentMethodEvent } from '@stripe/stripe-js';
 import { useCart } from '@/context/CartContext';
-import { useToast } from '@/hooks/useToast';
+import { usePaymentToast } from '@/hooks/useToast';
 import { PaymentMethod } from './PaymentSection';
 import { formatCurrency } from '@/constants/payments';
 import { logClientError, generateIdempotencyKey } from '@/lib/stripe-client';
+import { monitoring } from '@/utils/monitoring';
 
 interface DigitalWalletButtonsProps {
   selectedMethod: PaymentMethod;
@@ -39,7 +40,12 @@ export default function DigitalWalletButtons({
   const stripe = useStripe();
   const elements = useElements();
   const { cartItems, clearCart } = useCart();
-  const { showToast } = useToast();
+  const {
+    showPaymentProcessing,
+    showPaymentError,
+    showPaymentSuccess,
+    hideToast,
+  } = usePaymentToast();
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentRequest, setPaymentRequest] = useState<PaymentRequest | null>(null);
@@ -189,21 +195,27 @@ export default function DigitalWalletButtons({
     if (!paymentRequest) return;
 
     const handlePaymentMethod = async (event: PaymentRequestPaymentMethodEvent) => {
+      let processingToastId: string | undefined;
+      const stopDigitalWalletTimer = monitoring.startTimer('client.payment_processing');
+      
       try {
         setIsProcessing(true);
         onPaymentStart?.();
         
-        showToast({
-          type: 'info',
-          message: 'Processing your payment...',
-          duration: 3000,
-        });
+        // Record digital wallet payment attempt
+        monitoring.recordPaymentAttempt();
+        
+        processingToastId = showPaymentProcessing('Processing digital wallet payment...');
 
         // Create payment intent with the selected payment method
         const { clientSecret, orderId, error: intentError } = await createPaymentIntent(event.paymentMethod.id);
         
         if (intentError || !clientSecret) {
           throw new Error(intentError || 'Failed to create payment intent');
+        }
+
+        if (!stripe) {
+          throw new Error('Stripe not initialized');
         }
 
         // Confirm the payment
@@ -217,26 +229,28 @@ export default function DigitalWalletButtons({
           
           const errorMessage = confirmError.message || 'Payment failed. Please try again.';
           onPaymentError?.(errorMessage);
-          showToast({
-            type: 'error',
+          showPaymentError({
             message: errorMessage,
-            duration: 5000,
+            category: 'card',
+            isRetryable: false,
+            severity: 'high',
           });
+          if (processingToastId) hideToast(processingToastId);
           return;
         }
 
         if (paymentIntent?.status === 'succeeded') {
           event.complete('success');
           
+          // Record successful digital wallet payment
+          monitoring.recordPaymentSuccess();
+          
           // Clear cart on successful payment
           clearCart();
           
           onPaymentSuccess?.(paymentIntent);
-          showToast({
-            type: 'success',
-            message: 'Payment successful! Your order has been confirmed.',
-            duration: 5000,
-          });
+          if (processingToastId) hideToast(processingToastId);
+          showPaymentSuccess('Payment successful! Your order has been confirmed.');
 
           // Redirect to success page
           setTimeout(() => {
@@ -246,24 +260,45 @@ export default function DigitalWalletButtons({
           // Handle other payment statuses
           event.complete('fail');
           const statusMessage = `Payment status: ${paymentIntent?.status}. Please try again.`;
-          onPaymentError?.(statusMessage);
-          showToast({
-            type: 'error',
-            message: statusMessage,
-            duration: 5000,
+          
+          // Record digital wallet payment failure
+          monitoring.recordPaymentError('digital_wallet_status_failure', {
+            paymentStatus: paymentIntent?.status,
+            selectedMethod,
+            amount,
           });
+          
+          onPaymentError?.(statusMessage);
+          showPaymentError({
+            message: statusMessage,
+            category: 'unknown',
+            isRetryable: true,
+            severity: 'medium',
+          });
+          if (processingToastId) hideToast(processingToastId);
         }
       } catch (error) {
         console.error('Digital wallet payment failed:', error);
         event.complete('fail');
         
         const errorMessage = error instanceof Error ? error.message : 'Payment failed. Please try again.';
-        onPaymentError?.(errorMessage);
-        showToast({
-          type: 'error',
-          message: errorMessage,
-          duration: 5000,
+        
+        // Record digital wallet payment error
+        monitoring.recordPaymentError('digital_wallet_exception', {
+          errorMessage,
+          selectedMethod,
+          amount,
+          context: 'digital_wallet_payment_processing',
         });
+        
+        onPaymentError?.(errorMessage);
+        showPaymentError({
+          message: errorMessage,
+          category: 'network',
+          isRetryable: true,
+          severity: 'medium',
+        });
+        if (processingToastId) hideToast(processingToastId);
         
         logClientError(error, {
           context: 'digital_wallet_payment_processing',
@@ -271,6 +306,8 @@ export default function DigitalWalletButtons({
           amount,
         });
       } finally {
+        // Stop digital wallet timer
+        stopDigitalWalletTimer();
         setIsProcessing(false);
       }
     };
@@ -280,7 +317,7 @@ export default function DigitalWalletButtons({
     return () => {
       paymentRequest.off('paymentmethod', handlePaymentMethod);
     };
-  }, [paymentRequest, stripe, createPaymentIntent, onPaymentStart, onPaymentSuccess, onPaymentError, showToast, clearCart, selectedMethod, amount]);
+  }, [paymentRequest, stripe, createPaymentIntent, onPaymentStart, onPaymentSuccess, onPaymentError, showPaymentProcessing, showPaymentError, showPaymentSuccess, hideToast, clearCart, selectedMethod, amount]);
 
   // Handle invalid amount
   if (!isValidAmount) {
@@ -383,18 +420,20 @@ export default function DigitalWalletButtons({
 
         {/* Stripe Payment Request Button */}
         <div className="w-full">
-          <PaymentRequestButtonElement
-            options={{
-              paymentRequest,
-              style: {
-                paymentRequestButton: {
-                  type: selectedMethod === 'apple_pay' ? 'default' : 'default',
-                  theme: 'dark',
-                  height: '48px',
+          {paymentRequest && (
+            <PaymentRequestButtonElement
+              options={{
+                paymentRequest,
+                style: {
+                  paymentRequestButton: {
+                    type: selectedMethod === 'apple_pay' ? 'default' : 'default',
+                    theme: 'dark',
+                    height: '48px',
+                  },
                 },
-              },
-            }}
-          />
+              }}
+            />
+          )}
         </div>
       </div>
 

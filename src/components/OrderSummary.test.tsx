@@ -140,8 +140,8 @@ describe("OrderSummary", () => {
       // Images now have proper alt text, so use getByRole("img") - Next.js optimized
       const images = screen.getAllByRole("img");
       expect(images).toHaveLength(2);
-      expect(images[0].getAttribute("src")).toContain("%2Ftest-image.jpg");
-      expect(images[1].getAttribute("src")).toContain("%2Ftest-image-2.jpg");
+      expect(images[0]?.getAttribute("src")).toContain("%2Ftest-image.jpg");
+      expect(images[1]?.getAttribute("src")).toContain("%2Ftest-image-2.jpg");
     });
   });
 
