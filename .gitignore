@@ -29,6 +29,10 @@ build/Release
 .DS_Store
 *.pem
 
+# temporary files
+.tmp/
+tmp/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

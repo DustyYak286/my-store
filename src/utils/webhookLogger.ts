@@ -149,13 +149,14 @@ const performanceData = {
 export class WebhookLogger {
   private config: LoggerConfig;
   private logBuffer: WebhookLogEntry[] = [];
+  private maintenanceInterval: NodeJS.Timeout | null = null;
 
   constructor(config: LoggerConfig = DEFAULT_LOGGER_CONFIG) {
     this.config = config;
     
-    // Start periodic cleanup and metrics calculation
-    if (typeof setInterval === 'function') {
-      setInterval(() => this.performMaintenance(), 60000); // Every minute
+    // Start periodic cleanup and metrics calculation only in non-test environments
+    if (process.env.NODE_ENV !== 'test' && typeof setInterval === 'function') {
+      this.maintenanceInterval = setInterval(() => this.performMaintenance(), 60000); // Every minute
     }
   }
 
@@ -167,7 +168,7 @@ export class WebhookLogger {
     auditLogs.splice(0, auditLogs.length);
     processingMetrics.clear();
     
-    // Reset performance data
+    // Reset performance data to initial state
     performanceData.totalWebhooks = 0;
     performanceData.successfulWebhooks = 0;
     performanceData.failedWebhooks = 0;
@@ -177,6 +178,16 @@ export class WebhookLogger {
     performanceData.securityViolations = 0;
     performanceData.errorsByStage = {};
     performanceData.slowProcessingCount = 0;
+  }
+
+  /**
+   * Stop maintenance interval and cleanup (for testing)
+   */
+  destroy(): void {
+    if (this.maintenanceInterval) {
+      clearInterval(this.maintenanceInterval);
+      this.maintenanceInterval = null;
+    }
   }
 
   /**
@@ -793,14 +804,20 @@ export const webhookLogger = new WebhookLogger();
  */
 export function createTimedLogger(
   processingId: string,
-  operation: string
+  operation: string,
+  logLevel?: LogLevel
 ): { start: () => void; end: (success: boolean, metadata?: Record<string, any>) => void } {
   let startTime: number;
+  
+  // Create a logger instance with the specified log level for testing
+  const logger = logLevel !== undefined ? 
+    new WebhookLogger({ ...DEFAULT_LOGGER_CONFIG, logLevel }) : 
+    webhookLogger;
   
   return {
     start: () => {
       startTime = Date.now();
-      webhookLogger.log(LogLevel.DEBUG, `${operation} started`, {
+      logger.log(LogLevel.DEBUG, `${operation} started`, {
         processingId,
         tags: ['timing', operation, 'start'],
       });
@@ -809,7 +826,7 @@ export function createTimedLogger(
       const duration = Date.now() - startTime;
       const level = success ? LogLevel.DEBUG : LogLevel.WARN;
       
-      webhookLogger.log(level, `${operation} ${success ? 'completed' : 'failed'}`, {
+      logger.log(level, `${operation} ${success ? 'completed' : 'failed'}`, {
         processingId,
         duration,
         metadata: { ...metadata, success },

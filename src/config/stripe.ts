@@ -7,6 +7,7 @@
 
 import { env } from '@/utils/envValidation';
 import { PAYMENT_CURRENCY, STRIPE_CONFIG, TIMEOUT_CONFIG } from '@/constants/payments';
+import { getCountriesFromEnv } from '@/config/checkout';
 
 // ====== ENVIRONMENT DETECTION ======
 
@@ -30,6 +31,9 @@ export const isTestMode = (): boolean => {
  */
 export const getEnvironmentLabel = (): string => {
   if (process.env.NODE_ENV === 'development') return 'development';
+  if (process.env.NODE_ENV === 'test') {
+    return isTestMode() ? 'test' : 'test-live';
+  }
   if (process.env.NODE_ENV === 'production') {
     return isTestMode() ? 'production-test' : 'production-live';
   }
@@ -76,8 +80,9 @@ export const stripeConfig = {
   
   // Payment Intent configuration
   paymentIntent: {
+    // Disable automatic payment methods to prevent Link conflicts
     automaticPaymentMethods: {
-      enabled: true,
+      enabled: false, // Explicitly disabled to prevent Link
       allow_redirects: 'never' as const, // Client-side confirmation only
     },
     captureMethod: 'automatic' as const,
@@ -94,8 +99,16 @@ export const stripeConfig = {
   
   // Webhook configuration
   webhooks: {
-    tolerance: 300, // 5 minutes
-    events: ['payment_intent.succeeded', 'payment_intent.payment_failed'] as const,
+    tolerance: 300,  // 5 minutes
+    timeout: 30000,  // 30 seconds
+    maxRetries: 3,   // Retry configuration
+    events: [
+      'payment_intent.succeeded',
+      'payment_intent.payment_failed',
+      'payment_intent.canceled',
+      'charge.succeeded',
+      'charge.failed',
+    ] as const,
   },
 } as const;
 
@@ -232,7 +245,67 @@ export const getClientStripeOptions = () => ({
 // ====== PAYMENT INTENT HELPERS ======
 
 /**
- * Get default Payment Intent creation parameters
+ * Helper function to convert country name to ISO-3166 alpha-2 code for Stripe
+ * Dynamically handles any countries configured in environment variables
+ */
+function getCountryCodeForStripe(countryName: string): string {
+  // Dynamic country-to-ISO mapping based on environment configuration
+  const countryCodeMap: Record<string, string> = {
+    // European countries
+    'Romania': 'RO',
+    'Germany': 'DE', 
+    'France': 'FR',
+    'Italy': 'IT',
+    'Spain': 'ES',
+    'Netherlands': 'NL',
+    'Belgium': 'BE',
+    'Austria': 'AT',
+    'Poland': 'PL',
+    'Czech Republic': 'CZ',
+    'Hungary': 'HU',
+    'Slovakia': 'SK',
+    'Slovenia': 'SI',
+    'Croatia': 'HR',
+    'Bulgaria': 'BG',
+    'Greece': 'GR',
+    'Portugal': 'PT',
+    'Sweden': 'SE',
+    'Denmark': 'DK',
+    'Finland': 'FI',
+    'Norway': 'NO',
+    'Switzerland': 'CH',
+    'Luxembourg': 'LU',
+    // North America
+    'United States': 'US',
+    'Canada': 'CA',
+    'Mexico': 'MX',
+    // Other common countries
+    'United Kingdom': 'GB',
+    'Australia': 'AU',
+    'New Zealand': 'NZ',
+    'Japan': 'JP',
+    'South Korea': 'KR',
+    'Singapore': 'SG',
+    // Fallbacks
+    'Other': 'US', // Default fallback
+  };
+  
+  return countryCodeMap[countryName] || countryName.slice(0, 2).toUpperCase();
+}
+
+/**
+ * Get the default billing country from environment configuration
+ * Uses the first country in the configured list as the default
+ */
+function getDefaultBillingCountryForStripe(): string {
+  const countries = getCountriesFromEnv();
+  // Use the first configured country as default, fallback to Romania if none configured
+  const firstCountry = countries[0] || 'Romania';
+  return getCountryCodeForStripe(firstCountry);
+}
+
+/**
+ * Get default Payment Intent creation parameters with environment-driven configuration
  * @param amount Amount in smallest currency unit (bani)
  * @param orderId Order ID to include in metadata
  * @returns Payment Intent parameters
@@ -240,18 +313,29 @@ export const getClientStripeOptions = () => ({
 export const getPaymentIntentParams = (
   amount: number,
   orderId: string
-) => ({
-  amount,
-  currency: stripeConfig.currency,
-  automatic_payment_methods: stripeConfig.paymentIntent.automaticPaymentMethods,
-  capture_method: stripeConfig.paymentIntent.captureMethod,
-  confirmation_method: stripeConfig.paymentIntent.confirmationMethod,
-  metadata: {
-    orderId,
-    environment: stripeConfig.environmentLabel,
-    timestamp: new Date().toISOString(),
-  },
-});
+) => {
+  const params: any = {
+    amount,
+    currency: stripeConfig.currency,
+    capture_method: stripeConfig.paymentIntent.captureMethod,
+    // Restrict to card payments only - this prevents Link from being offered
+    payment_method_types: ['card'],
+    metadata: {
+      orderId,
+      environment: stripeConfig.environmentLabel,
+      timestamp: new Date().toISOString(),
+      source: 'api_create_intent',
+      // Include environment-driven default billing country for webhook processing
+      default_billing_country: getDefaultBillingCountryForStripe(),
+    },
+  };
+
+  // Remove automatic_payment_methods since we're explicitly setting payment_method_types
+  // This ensures Link is not offered and prevents country selector conflicts
+  params.confirmation_method = stripeConfig.paymentIntent.confirmationMethod;
+
+  return params;
+};
 
 /**
  * Get Elements options for client-side Stripe Elements

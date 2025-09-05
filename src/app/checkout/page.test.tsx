@@ -1,10 +1,143 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRouter } from "next/navigation";
 import CheckoutPage from "./page";
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/hooks/useToast";
+
+// Mock OrderSummary component
+jest.mock("@/components/OrderSummary", () => ({
+  default: function MockOrderSummary() {
+    // Import the mocked useCart hook
+    const { useCart } = require("@/context/CartContext");
+    const { cartItems } = useCart();
+    
+    if (!cartItems || cartItems.length === 0) {
+      return (
+        <div data-testid="order-summary">
+          <h2>Your cart is empty</h2>
+          <p>Add some items to proceed with checkout</p>
+        </div>
+      );
+    }
+    
+    return (
+      <div data-testid="order-summary">
+        <h2>Order Summary ({cartItems.length} items)</h2>
+        <div>
+          <h3>Capybara Plushie</h3>
+          <p>Quantity: 2</p>
+          <p>Price: $160.00</p>
+        </div>
+        <div>
+          <p>Total: <strong>$160.00</strong></p>
+        </div>
+      </div>
+    );
+  }
+}));
+
+// Mock LazyLoadErrorBoundary to avoid error boundary complexity
+jest.mock("@/components/LazyLoadErrorBoundary", () => ({
+  LazyLoadErrorBoundary: ({ children }: { children: React.ReactNode }) => children
+}));
+
+// Mock Next.js dynamic imports to prevent async loading issues in tests
+jest.mock("next/dynamic", () => {
+  return (importFunc: () => any, options?: any) => {
+    const importString = importFunc.toString();
+    
+    // For OrderSummary
+    if (importString.includes('OrderSummary')) {
+      return function MockOrderSummary() {
+        const { useCart } = require("@/context/CartContext");
+        const { cartItems } = useCart();
+        
+        if (!cartItems || cartItems.length === 0) {
+          return (
+            <div data-testid="order-summary">
+              <h2>Your cart is empty</h2>
+              <p>Add some items to proceed with checkout</p>
+            </div>
+          );
+        }
+        
+        return (
+          <div data-testid="order-summary">
+            <h2>Order Summary ({cartItems.length} items)</h2>
+            <div>
+              <h3>Capybara Plushie</h3>
+              <p>Quantity: 2</p>
+              <p>Price: $160.00</p>
+            </div>
+            <div>
+              <p>Total: <strong>$160.00</strong></p>
+            </div>
+          </div>
+        );
+      };
+    }
+    
+    // For CheckoutForm (use the existing mock)
+    if (importString.includes('CheckoutForm')) {
+      return function MockCheckoutForm() {
+        return (
+          <div data-testid="checkout-form">
+            <form>
+              <div className="space-y-6">
+                {/* Customer Information Section */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Customer Information</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label htmlFor="customerEmail">Customer Email Address</label>
+                      <input id="customerEmail" type="email" aria-label="Customer Email Address" />
+                    </div>
+                    <div>
+                      <label htmlFor="customerFullName">Customer Full Name</label>
+                      <input id="customerFullName" type="text" aria-label="Customer Full Name" />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Shipping Information Section */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Shipping Information</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label htmlFor="customerStreetAddress">Customer Street Address</label>
+                      <input id="customerStreetAddress" type="text" aria-label="Customer Street Address" />
+                    </div>
+                    <div>
+                      <label htmlFor="customerCity">Customer City</label>
+                      <input id="customerCity" type="text" aria-label="Customer City" />
+                    </div>
+                    <div>
+                      <label htmlFor="customerPostalCode">Customer Postal Code</label>
+                      <input id="customerPostalCode" type="text" aria-label="Customer Postal Code" />
+                    </div>
+                    <div>
+                      <label htmlFor="customerCountry">Customer Country</label>
+                      <select id="customerCountry" aria-label="Customer Country">
+                        <option value="United States">United States</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                
+                <button type="submit" disabled>Complete Order</button>
+              </div>
+            </form>
+          </div>
+        );
+      };
+    }
+    
+    // Fallback for other dynamic imports
+    return () => <div data-testid="mocked-dynamic-component">Mocked Dynamic Component</div>;
+  };
+});
 
 // Mock the dependencies
 jest.mock("next/navigation", () => ({
@@ -63,60 +196,7 @@ jest.mock("@/lib/stripe-client", () => ({
   })),
 }));
 
-// Mock the CheckoutForm component to provide consistent form fields for testing
-jest.mock("@/components/CheckoutForm", () => {
-  return function MockCheckoutForm() {
-    return (
-      <div data-testid="checkout-form">
-        <form>
-          <div className="space-y-6">
-            {/* Customer Information Section */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Customer Information</h3>
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="customerEmail">Customer Email Address</label>
-                  <input id="customerEmail" type="email" aria-label="Customer Email Address" />
-                </div>
-                <div>
-                  <label htmlFor="customerFullName">Customer Full Name</label>
-                  <input id="customerFullName" type="text" aria-label="Customer Full Name" />
-                </div>
-              </div>
-            </div>
-            
-            {/* Shipping Information Section */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Shipping Information</h3>
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="customerStreetAddress">Customer Street Address</label>
-                  <input id="customerStreetAddress" type="text" aria-label="Customer Street Address" />
-                </div>
-                <div>
-                  <label htmlFor="customerCity">Customer City</label>
-                  <input id="customerCity" type="text" aria-label="Customer City" />
-                </div>
-                <div>
-                  <label htmlFor="customerPostalCode">Customer Postal Code</label>
-                  <input id="customerPostalCode" type="text" aria-label="Customer Postal Code" />
-                </div>
-                <div>
-                  <label htmlFor="customerCountry">Customer Country</label>
-                  <select id="customerCountry" aria-label="Customer Country">
-                    <option value="United States">United States</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            
-            <button type="submit" disabled>Complete Order</button>
-          </div>
-        </form>
-      </div>
-    );
-  };
-});
+// CheckoutForm mock is handled by the dynamic import mock above
 
 // Mock the PaymentSection components to avoid integration complexity in page tests
 jest.mock("@/components/checkout/PaymentSection", () => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { useStripe, useElements } from '@stripe/react-stripe-js';
 import PaymentSection from './PaymentSection';
 import { useCart } from '@/context/CartContext';
@@ -102,17 +102,25 @@ describe('PaymentSection', () => {
       googlePay: false,
     });
     
-    // Mock enhanced Stripe-based detection
-    mockDetectPaymentMethodsWithStripe.mockResolvedValue({
-      card: true,
-      applePay: false,
-      googlePay: false,
+    // Mock enhanced Stripe-based detection to resolve immediately (synchronous)
+    // This prevents async state updates that trigger act() warnings
+    mockDetectPaymentMethodsWithStripe.mockImplementation(async () => {
+      // Return immediately resolved value to minimize async timing issues
+      return Promise.resolve({
+        card: true,
+        applePay: false,
+        googlePay: false,
+      });
     });
   });
 
   describe('Initialization', () => {
     it('renders payment section with all components', async () => {
-      render(<PaymentSection />);
+      await act(async () => {
+        render(<PaymentSection />);
+        // Allow async operations to complete
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
 
       await waitFor(() => {
         expect(screen.getByText('Payment Information')).toBeInTheDocument();
@@ -121,13 +129,15 @@ describe('PaymentSection', () => {
       });
     });
 
-    it('shows loading state during initialization', () => {
+    it('shows loading state during initialization', async () => {
       // Mock delayed resolution
       mockDetectPaymentMethodsWithStripe.mockImplementation(
         () => new Promise(() => {}) // Never resolves
       );
 
-      render(<PaymentSection />);
+      await act(async () => {
+        render(<PaymentSection />);
+      });
 
       expect(screen.getByText('Payment Information')).toBeInTheDocument();
       // Should show skeleton loading state

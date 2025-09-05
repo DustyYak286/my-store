@@ -115,19 +115,28 @@ describe('PaymentErrorBoundary', () => {
     });
 
     it('logs error details to console', () => {
-      render(
-        <PaymentErrorBoundary>
-          <ThrowError errorMessage="Custom test error" />
-        </PaymentErrorBoundary>
-      );
+      // Temporarily restore original console.error to capture the call
+      const mockForThisTest = jest.fn();
+      console.error = mockForThisTest;
 
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        '💳 PaymentErrorBoundary caught an error:',
-        expect.objectContaining({
-          error: 'Custom test error',
-          errorId: expect.stringMatching(/^pe_\d+_/),
-        })
-      );
+      try {
+        render(
+          <PaymentErrorBoundary>
+            <ThrowError errorMessage="Custom test error" />
+          </PaymentErrorBoundary>
+        );
+
+        expect(mockForThisTest).toHaveBeenCalledWith(
+          '💳 PaymentErrorBoundary caught an error:',
+          expect.objectContaining({
+            error: 'Custom test error',
+            errorId: expect.stringMatching(/^pe_\d+_/),
+          })
+        );
+      } finally {
+        // Restore the mock
+        console.error = mockConsoleError;
+      }
     });
 
     it('calls onError callback when provided', () => {

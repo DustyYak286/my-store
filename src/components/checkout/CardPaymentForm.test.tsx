@@ -102,22 +102,17 @@ describe('CardPaymentForm', () => {
             defaultCollapsed: false,
           },
           fields: {
-            billingDetails: {
-              name: 'auto',
-              email: 'auto',
-              phone: 'auto',
-              address: {
-                line1: 'auto',
-                line2: 'auto',
-                city: 'auto',
-                state: 'auto',
-                postalCode: 'auto',
-                country: 'auto',
-              },
-            },
+            billingDetails: 'never', // We collect billing details ourselves
           },
           terms: {
             card: 'auto',
+          },
+          defaultValues: {
+            billingDetails: {
+              address: {
+                country: expect.any(String), // Dynamic country from environment
+              },
+            },
           },
         },
       });

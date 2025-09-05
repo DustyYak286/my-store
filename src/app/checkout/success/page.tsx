@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, ShoppingBag, Mail, Printer } from 'lucide-react';
-import { getOrderById, getOrderByNumber } from '@/lib/orderStore';
+// Order fetching now handled via API calls
 import { searchAuditTrail } from '@/utils/auditTrail';
 import { formatPrice } from '@/utils/formatPrice';
 import { useCartClearingCheck, useCartClearing } from '@/hooks/useCartClearing';
@@ -174,34 +174,98 @@ export default function PaymentSuccessPage() {
   } | null>(null);
 
   useEffect(() => {
-    const orderId = searchParams.get('order_id');
-    const orderNumber = searchParams.get('order_number');
-    const paymentIntentId = searchParams.get('payment_intent');
-    
-    if (!orderId && !orderNumber) {
-      setError('Missing order information. Please check your email for order confirmation.');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Try to find the order
-      let foundOrder: Order | null = null;
+    const loadOrder = async () => {
+      const orderId = searchParams.get('order_id');
+      const orderNumber = searchParams.get('order_number');
+      const paymentIntentId = searchParams.get('payment_intent');
       
-      if (orderId) {
-        foundOrder = getOrderById(orderId);
-      } else if (orderNumber) {
-        foundOrder = getOrderByNumber(orderNumber);
-      }
-
-      if (!foundOrder) {
-        setError('Order not found. Please contact support if you believe this is an error.');
+      if (!orderId && !orderNumber) {
+        setError('Missing order information. Please check your email for order confirmation.');
         setLoading(false);
         return;
       }
 
-      // Verify this is a successful order
-      if (foundOrder.status !== 'paid' && foundOrder.paymentStatus !== 'succeeded') {
+      try {
+        // Production-grade order fetching via API
+        const orderIdentifier = orderId || orderNumber;
+        console.log(`🔍 Fetching order via API: ${orderIdentifier}`);
+        
+        const response = await fetch(`/api/orders/${orderIdentifier}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            console.log(`❌ Order not found via API: ${orderIdentifier}`);
+            setError('Order not found. Please contact support if you believe this is an error.');
+          } else if (response.status === 429) {
+            setError('Too many requests. Please wait a moment and refresh the page.');
+          } else {
+            console.error(`❌ API error fetching order: ${response.status} ${response.statusText}`);
+            setError('Unable to load order details. Please try again or contact support.');
+          }
+          setLoading(false);
+          return;
+        }
+
+        const apiResult = await response.json();
+        
+        if (!apiResult.success) {
+          console.error(`❌ API returned error:`, apiResult.error);
+          setError('Unable to load order details. Please contact support if you believe this is an error.');
+          setLoading(false);
+          return;
+        }
+
+        // Transform API response to match expected structure
+        const foundOrder = {
+          ...apiResult.order,
+          // Ensure payment object exists and has required fields
+          payment: {
+            paymentIntentId: paymentIntentId || apiResult.order.payment?.paymentIntentId || '',
+            amount: apiResult.order.totals.total,
+            capturedAt: apiResult.order.payment?.capturedAt || new Date().toISOString(),
+            ...apiResult.order.payment
+          },
+          // Ensure timestamps object exists with proper structure
+          timestamps: {
+            createdAt: apiResult.order.timestamps?.createdAt || apiResult.order.createdAt || new Date().toISOString(),
+            updatedAt: apiResult.order.timestamps?.updatedAt || apiResult.order.updatedAt || new Date().toISOString(),
+            ...apiResult.order.timestamps
+          },
+          // Ensure customer info exists
+          customerInfo: apiResult.order.customerInfo || {
+            email: '',
+            firstName: '',
+            lastName: '',
+          },
+          // Ensure all fields that might be accessed exist
+          shippingAddress: apiResult.order.shippingAddress || {},
+          billingAddress: apiResult.order.billingAddress || {},
+        };
+        
+        console.log(`✅ Order loaded via API: ${foundOrder.id} (${foundOrder.orderNumber}) - Status: ${foundOrder.status}`);
+
+        if (!foundOrder) {
+          setError('Order not found. Please contact support if you believe this is an error.');
+          setLoading(false);
+          return;
+        }
+
+      // Verify this is a successful order (more tolerant of processing states)
+      if (foundOrder.status === 'failed' || foundOrder.status === 'cancelled' || 
+          foundOrder.paymentStatus === 'failed' || foundOrder.paymentStatus === 'cancelled') {
+        setError('Payment was not successful. Please contact support if you believe this is an error.');
+        setLoading(false);
+        return;
+      }
+      
+      // Allow orders that are processing, paid, or have succeeded payment status
+      if (foundOrder.status !== 'paid' && foundOrder.status !== 'processing' && 
+          foundOrder.paymentStatus !== 'succeeded' && foundOrder.paymentStatus !== 'processing') {
         setError('Payment confirmation is still processing. Please refresh the page in a few moments.');
         setLoading(false);
         return;
@@ -246,6 +310,9 @@ export default function PaymentSuccessPage() {
       setError('Unable to load order details. Please try again or contact support.');
       setLoading(false);
     }
+    };
+
+    loadOrder();
   }, [searchParams]);
 
   if (loading) {
@@ -327,7 +394,7 @@ export default function PaymentSuccessPage() {
                 <CheckCircle className="h-8 w-8 text-green-500" aria-hidden="true" />
               </div>
               <div className="ml-3">
-                <h1 className="text-2xl font-bold text-gray-900">Payment Successful!</h1>
+                <h1 className="text-2xl font-bold text-gray-900" data-testid="payment-success">Payment Successful!</h1>
                 <p className="mt-1 text-sm text-gray-600">
                   Thank you for your purchase. Your order has been confirmed.
                 </p>

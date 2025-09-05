@@ -77,31 +77,52 @@ export default function PaymentProvider({ children, clientSecret }: PaymentProvi
   };
 
   // Elements options configuration
-  // Note: Include clientSecret for Payment Intent mode, or mode for Setup mode
+  // Always use Payment Intent mode now that we initialize with clientSecret on page load
   const hasValidClientSecret = clientSecret && clientSecret.length > 0;
-  const options: StripeElementsOptions = hasValidClientSecret 
-    ? {
-        // Payment Intent mode - use when we have a valid clientSecret
-        clientSecret,
-        appearance,
-        locale: 'en',
-      }
-    : {
-        // Setup mode - collect payment method without immediate charge
-        mode: 'setup',
-        currency: 'ron', // Required for setup mode
-        appearance,
-        locale: 'en',
-      };
+  
+  // If no clientSecret is provided, we'll wait for initialization
+  if (!hasValidClientSecret) {
+    console.log('🔄 PaymentProvider: No clientSecret provided, waiting for initialization...');
+    return (
+      <PaymentErrorBoundary
+        onError={(error, errorInfo) => {
+          console.error('Payment component error during initialization:', {
+            error: error.message,
+            componentStack: errorInfo.componentStack,
+            timestamp: new Date().toISOString(),
+          });
+        }}
+        onRetry={() => {
+          console.log('Payment component retry triggered during initialization');
+        }}
+      >
+        <div className="space-y-6">
+          <div className="animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-1/3 mb-3"></div>
+            <div className="h-12 bg-gray-200 rounded mb-4"></div>
+            <div className="h-12 bg-gray-200 rounded mb-4"></div>
+            <div className="h-12 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </PaymentErrorBoundary>
+    );
+  }
+
+  // Payment Intent mode - use when we have a valid clientSecret
+  const options: StripeElementsOptions = {
+    clientSecret,
+    appearance,
+    locale: 'en',
+  };
 
   // Debug logging for development
   if (process.env.NODE_ENV === 'development') {
     console.log('🔧 PaymentProvider initialized:', {
-      hasValidClientSecret,
+      hasValidClientSecret: true, // Always true at this point
       clientSecretPreview: clientSecret ? `${clientSecret.substring(0, 15)}...` : 'undefined',
-      elementsMode: hasValidClientSecret ? 'Payment Intent mode' : 'Setup mode',
+      elementsMode: 'Payment Intent mode', // Always payment mode now
       optionsKeys: Object.keys(options),
-      currency: hasValidClientSecret ? 'from clientSecret' : 'ron'
+      currency: 'from clientSecret'
     });
   }
 

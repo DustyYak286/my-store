@@ -17,6 +17,13 @@ let stripeInstance: Stripe | null = null;
  * Implements singleton pattern with lazy initialization
  * @returns Configured Stripe instance
  */
+/**
+ * Clear the cached Stripe instance (useful for testing)
+ */
+export const clearStripeInstance = (): void => {
+  stripeInstance = null;
+};
+
 export const getStripe = (): Stripe => {
   if (!stripeInstance) {
     try {
@@ -187,6 +194,11 @@ export const processPaymentIntentWebhook = (
   amount: number;
   currency: string;
 } => {
+  // Production-grade error handling for corrupted webhook data
+  if (!event.data || !event.data.object) {
+    throw new Error(`Invalid webhook event data: missing data.object for event ${event.id}`);
+  }
+  
   const paymentIntent = event.data.object as Stripe.PaymentIntent;
   
   const result = {
@@ -375,6 +387,76 @@ export const healthCheck = async (): Promise<{
   
   return { isHealthy, checks, errors };
 };
+
+// ====== TAX CALCULATION UTILITIES ======
+
+/**
+ * Calculate total amount with tax consistently
+ * Used by both payment intent creation and validation
+ * @param subtotal Subtotal amount in smallest currency unit (bani)
+ * @param taxRate Tax rate (default: 0.19 for Romanian VAT)
+ * @returns Total amount including tax
+ */
+export function calculateTotalWithTax(
+  subtotal: number, 
+  taxRate: number = 0.19  // Romanian VAT
+): number {
+  const tax = Math.round(subtotal * taxRate);
+  return subtotal + tax;
+}
+
+/**
+ * Validate amount calculations are consistent between cart and payment
+ * @param items Cart items to validate
+ * @param expectedAmount Expected total amount in smallest currency unit
+ * @param currency Currency code (default: 'ron')
+ * @returns True if calculations match
+ */
+export function validateAmountCalculation(
+  items: Array<{ price: number; quantity: number }>,
+  expectedAmount: number,
+  currency: string = 'ron'
+): boolean {
+  const subtotal = items.reduce((sum, item) => 
+    sum + (item.price * item.quantity * 100), 0
+  );
+  const total = calculateTotalWithTax(subtotal);
+  return total === expectedAmount;
+}
+
+/**
+ * Calculate detailed amount breakdown for transparency
+ * @param items Cart items
+ * @param taxRate Tax rate (default: 0.19)
+ * @returns Detailed breakdown object
+ */
+export function calculateDetailedBreakdown(
+  items: Array<{ price: number; quantity: number; name: string }>,
+  taxRate: number = 0.19
+): {
+  subtotal: number;
+  tax: number;
+  total: number;
+  itemBreakdown: Array<{ name: string; quantity: number; unitPrice: number; lineTotal: number }>;
+} {
+  const itemBreakdown = items.map(item => ({
+    name: item.name,
+    quantity: item.quantity,
+    unitPrice: Math.round(item.price * 100), // Convert to bani
+    lineTotal: Math.round(item.price * item.quantity * 100),
+  }));
+
+  const subtotal = itemBreakdown.reduce((sum, item) => sum + item.lineTotal, 0);
+  const tax = Math.round(subtotal * taxRate);
+  const total = subtotal + tax;
+
+  return {
+    subtotal,
+    tax,
+    total,
+    itemBreakdown,
+  };
+}
 
 // ====== MONITORING UTILITIES ======
 

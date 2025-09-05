@@ -24,12 +24,14 @@ export const PAYMENT_LIMITS = {
   MIN_AMOUNT: 250,
   
   // Maximum payment amount in smallest currency unit (bani for RON)
-  // 4,999,999 RON = 499,999,900 bani
-  MAX_AMOUNT: 499999900,
+  // Stripe limit for RON is 999,999.99 RON, but we need to account for 19% VAT
+  // So max pre-tax: 999,999.99 / 1.19 = 840,336.13 RON = 84,033,613 bani
+  MAX_AMOUNT: 84033613,
   
   // Human-readable versions for display
   MIN_AMOUNT_DISPLAY: 2.50,
-  MAX_AMOUNT_DISPLAY: 4999999,
+  // Maximum amount before tax (accounting for 19% VAT to stay within Stripe's 999,999.99 RON limit)
+  MAX_AMOUNT_DISPLAY: 840336.13,
 } as const;
 
 // ====== RETRY CONFIGURATION ======
@@ -230,7 +232,7 @@ export const PAYMENT_ERROR_MESSAGES = {
   
   // Amount errors
   AMOUNT_TOO_SMALL: `Minimum payment amount is ${PAYMENT_LIMITS.MIN_AMOUNT_DISPLAY} ${CURRENCY_CONFIG.code}.`,
-  AMOUNT_TOO_LARGE: `Maximum payment amount is ${PAYMENT_LIMITS.MAX_AMOUNT_DISPLAY} ${CURRENCY_CONFIG.code}.`,
+  AMOUNT_TOO_LARGE: `Maximum payment amount is ${PAYMENT_LIMITS.MAX_AMOUNT_DISPLAY.toLocaleString('ro-RO')} ${CURRENCY_CONFIG.code} (before tax).`,
   
   // Payment intent errors
   INTENT_CREATION_FAILED: 'Failed to initialize payment. Please try again.',

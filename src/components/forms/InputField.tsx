@@ -34,6 +34,7 @@ export const InputField: React.FC<InputFieldProps> = ({
         value={value}
         onChange={onChange}
         onBlur={onBlur}
+        data-testid={name === 'email' ? 'customer-email' : name === 'shippingFullName' ? 'customer-name' : `input-${name}`}
         className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-colors ${
           error 
             ? "border-red-500 focus:ring-red-500" 

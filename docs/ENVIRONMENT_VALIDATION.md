@@ -41,8 +41,8 @@ npm run validate:env
 # Build without validation (emergency use)
 npm run build:unsafe
 
-# Generate example .env file
-npm run generate:env
+# Validate Stripe keys for testing
+npm run validate:stripe
 ```
 
 ### **Environment Variables Validated**
@@ -146,9 +146,10 @@ Found 2 errors:
 ### **Files Created/Modified:**
 
 #### **New Files:**
-- `src/utils/envValidation.ts` - Core validation system (410 lines)
-- `src/components/ErrorBoundary.tsx` - Production error handling (153 lines)
-- `scripts/validate-env.js` - Build-time validation script (120 lines)
+- `src/utils/envValidation.ts` - Core application validation system
+- `tests/config/test-environment.ts` - Production-grade test environment loader with Zod validation
+- `scripts/validate-env.js` - Build-time validation script
+- `scripts/require-stripe-keys.js` - Stripe key validation for tests
 
 #### **Modified Files:**
 - `src/config/checkout.ts` - Integrated validation

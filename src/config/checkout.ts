@@ -8,6 +8,7 @@ export interface CheckoutConfig {
   // Validation Configuration
   validation: {
     emailRegex: RegExp;
+    emailMaxLength: number;
     postalCodeRegex: RegExp;
     nameMinLength: number;
     nameMaxLength: number;

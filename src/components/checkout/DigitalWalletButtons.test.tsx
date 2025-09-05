@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { useStripe, useElements } from '@stripe/react-stripe-js';
 import DigitalWalletButtons from './DigitalWalletButtons';
 import { useCart } from '@/context/CartContext';
@@ -299,7 +299,9 @@ describe('DigitalWalletButtons', () => {
         complete: jest.fn(),
       };
 
-      await paymentMethodHandler(mockEvent);
+      await act(async () => {
+        await paymentMethodHandler(mockEvent);
+      });
 
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith('/api/payments/create-intent', {
@@ -365,7 +367,9 @@ describe('DigitalWalletButtons', () => {
         complete: jest.fn(),
       };
 
-      await paymentMethodHandler(mockEvent);
+      await act(async () => {
+        await paymentMethodHandler(mockEvent);
+      });
 
       await waitFor(() => {
         expect(mockEvent.complete).toHaveBeenCalledWith('fail');
@@ -410,7 +414,9 @@ describe('DigitalWalletButtons', () => {
         complete: jest.fn(),
       };
 
-      await paymentMethodHandler(mockEvent);
+      await act(async () => {
+        await paymentMethodHandler(mockEvent);
+      });
 
       await waitFor(() => {
         expect(mockEvent.complete).toHaveBeenCalledWith('fail');
@@ -481,7 +487,9 @@ describe('DigitalWalletButtons', () => {
         complete: jest.fn(),
       };
 
-      await paymentMethodHandler(mockEvent);
+      await act(async () => {
+        await paymentMethodHandler(mockEvent);
+      });
 
       expect(onPaymentStart).toHaveBeenCalled();
     });
@@ -645,7 +653,9 @@ describe('DigitalWalletButtons', () => {
         paymentMethod: { id: 'pm_test_123' },
       };
 
-      await paymentMethodHandler(mockEvent);
+      await act(async () => {
+        await paymentMethodHandler(mockEvent);
+      });
 
       expect(monitoring.recordPaymentAttempt).toHaveBeenCalled();
     });
@@ -671,7 +681,9 @@ describe('DigitalWalletButtons', () => {
         paymentMethod: { id: 'pm_test_123' },
       };
 
-      await paymentMethodHandler(mockEvent);
+      await act(async () => {
+        await paymentMethodHandler(mockEvent);
+      });
 
       expect(monitoring.recordPaymentSuccess).toHaveBeenCalled();
       expect(mockEvent.complete).toHaveBeenCalledWith('success');
@@ -707,7 +719,9 @@ describe('DigitalWalletButtons', () => {
         paymentMethod: { id: 'pm_test_123' },
       };
 
-      await paymentMethodHandler(mockEvent);
+      await act(async () => {
+        await paymentMethodHandler(mockEvent);
+      });
 
       expect(monitoring.recordPaymentError).toHaveBeenCalledWith(
         'digital_wallet_status_failure',
@@ -744,7 +758,9 @@ describe('DigitalWalletButtons', () => {
         paymentMethod: { id: 'pm_test_123' },
       };
 
-      await paymentMethodHandler(mockEvent);
+      await act(async () => {
+        await paymentMethodHandler(mockEvent);
+      });
 
       expect(monitoring.recordPaymentError).toHaveBeenCalledWith(
         'digital_wallet_exception',
@@ -782,7 +798,9 @@ describe('DigitalWalletButtons', () => {
         paymentMethod: { id: 'pm_test_123' },
       };
 
-      await paymentMethodHandler(mockEvent);
+      await act(async () => {
+        await paymentMethodHandler(mockEvent);
+      });
 
       expect(monitoring.startTimer).toHaveBeenCalledWith('client.payment_processing');
       expect(mockStopTimer).toHaveBeenCalled();

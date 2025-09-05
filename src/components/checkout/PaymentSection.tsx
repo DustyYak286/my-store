@@ -71,8 +71,12 @@ export default function PaymentSection({
 
   // Initialize available payment methods
   useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+    
     const initializePaymentMethods = async () => {
       try {
+        if (!isMounted) return;
         setIsLoading(true);
         
         // Use enhanced Stripe-based detection if Stripe is available
@@ -81,6 +85,7 @@ export default function PaymentSection({
           try {
             detected = await detectPaymentMethodsWithStripe(stripe, Math.round(cartTotal * 100));
           } catch (stripeError) {
+            if (!isMounted) return; // Bail out if unmounted
             console.warn('Stripe-based detection failed, falling back to basic detection:', stripeError);
             detected = detectAvailablePaymentMethods();
           }
@@ -88,6 +93,8 @@ export default function PaymentSection({
           // Use basic detection if Stripe is not yet loaded
           detected = detectAvailablePaymentMethods();
         }
+        
+        if (!isMounted) return; // Bail out if unmounted
         
         setAvailableMethods({
           card: true, // Card payment should always be available
@@ -98,8 +105,10 @@ export default function PaymentSection({
         // Set default method to card, but allow user to choose
         // Only auto-select if current method is not available
         if (selectedMethod === 'apple_pay' && !detected.applePay) {
+          if (!isMounted) return; // Bail out if unmounted
           setSelectedMethod('card');
         } else if (selectedMethod === 'google_pay' && !detected.googlePay) {
+          if (!isMounted) return; // Bail out if unmounted
           setSelectedMethod('card');
         }
         
@@ -109,6 +118,7 @@ export default function PaymentSection({
           cartTotal,
         });
       } catch (error) {
+        if (!isMounted) return; // Bail out if unmounted
         console.error('Failed to initialize payment methods:', error);
         // Fallback to card only
         setAvailableMethods({
@@ -118,11 +128,19 @@ export default function PaymentSection({
         });
         setSelectedMethod('card');
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     initializePaymentMethods();
+    
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, [stripe, cartTotal, selectedMethod]);
 
   // Notify parent of payment method changes

@@ -16,7 +16,7 @@ import {
 describe('Enhanced Payment Validation', () => {
   describe('validatePaymentAmount', () => {
     it('should validate amounts within limits', () => {
-      const validAmounts = [2.50, 10.00, 100.00, 1000.00, 4999999];
+      const validAmounts = [2.50, 10.00, 100.00, 1000.00, 840336.13];
       
       validAmounts.forEach(amount => {
         const result = validatePaymentAmount(amount);
@@ -35,8 +35,8 @@ describe('Enhanced Payment Validation', () => {
       });
     });
 
-    it('should reject amounts above maximum (4,999,999 RON)', () => {
-      const invalidAmounts = [5000000, 10000000, Number.MAX_VALUE];
+    it('should reject amounts above maximum (840,336.13 RON)', () => {
+      const invalidAmounts = [840336.14, 1000000, 5000000, Number.MAX_VALUE];
       
       invalidAmounts.forEach(amount => {
         const result = validatePaymentAmount(amount);
@@ -196,9 +196,9 @@ describe('Enhanced Payment Validation', () => {
   describe('Payment limits configuration', () => {
     it('should have correct minimum and maximum limits', () => {
       expect(PAYMENT_LIMITS.MIN_AMOUNT_DISPLAY).toBe(2.50);
-      expect(PAYMENT_LIMITS.MAX_AMOUNT_DISPLAY).toBe(4999999);
+      expect(PAYMENT_LIMITS.MAX_AMOUNT_DISPLAY).toBe(840336.13);
       expect(PAYMENT_LIMITS.MIN_AMOUNT).toBe(250); // 2.50 RON in bani
-      expect(PAYMENT_LIMITS.MAX_AMOUNT).toBe(499999900); // 4,999,999 RON in bani
+      expect(PAYMENT_LIMITS.MAX_AMOUNT).toBe(84033613); // 840,336.13 RON in bani (tax-adjusted for Stripe limits)
     });
 
     it('should have consistent currency configuration', () => {

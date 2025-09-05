@@ -63,12 +63,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Enhanced security validation first (before expensive operations)
     securityTimer.start();
+    
+    // Extract timestamp from signature header for proper validation
+    let extractedTimestamp = 0;
+    try {
+      const signatureParts = signature.split(',');
+      for (const part of signatureParts) {
+        const [key, value] = part.split('=');
+        if (key === 't') {
+          extractedTimestamp = parseInt(value, 10);
+          break;
+        }
+      }
+    } catch (error) {
+      // If timestamp extraction fails, continue with 0 (will be caught by signature validation)
+      extractedTimestamp = 0;
+    }
+    
     const securityValidation = await validateWebhookSecurity(
       rawBody,
       signature,
       stripeConfig.webhookSecret,
-      '', // eventId - will be extracted from constructed event
-      0,  // timestamp - will be extracted from constructed event
+      '', // eventId - will be extracted from constructed event  
+      extractedTimestamp, // timestamp - extracted from signature
       sourceIp,
       DEFAULT_SECURITY_CONFIG
     );
@@ -139,8 +156,49 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const eventConstructionTimer = createTimedLogger(requestId, 'event-construction');
     eventConstructionTimer.start();
     
-    const event = constructWebhookEvent(rawBody, signature);
-    eventConstructionTimer.end(true, { eventType: event.type, eventId: event.id });
+    let event: any;
+    try {
+      event = constructWebhookEvent(rawBody, signature);
+      eventConstructionTimer.end(true, { eventType: event.type, eventId: event.id });
+    } catch (constructError) {
+      eventConstructionTimer.end(false, { error: constructError instanceof Error ? constructError.message : 'Unknown construction error' });
+      
+      // Check if this is a data validation/format error
+      const errorMessage = constructError instanceof Error ? constructError.message.toLowerCase() : '';
+      
+      if (errorMessage.includes('json') || errorMessage.includes('parse') || 
+          errorMessage.includes('malformed') || errorMessage.includes('invalid') ||
+          errorMessage.includes('corrupt') || errorMessage.includes('format')) {
+        
+        monitoring.recordWebhookError('invalid_event_format', {
+          error: constructError instanceof Error ? constructError.message : 'Unknown construction error',
+          sourceIp,
+          timestamp: new Date().toISOString(),
+        });
+        
+        webhookLogger.log(LogLevel.WARN, 'Invalid webhook event format', {
+          processingId: requestId,
+          metadata: {
+            error: constructError instanceof Error ? constructError.message : 'Unknown construction error',
+            sourceIp,
+            payloadSize: rawBody.length,
+          },
+          tags: ['webhook', 'validation', 'construction-failed'],
+        });
+        
+        processingTimer.end(false, { reason: 'invalid_event_format' });
+        
+        return NextResponse.json({ 
+          received: true,
+          ignored: true,
+          error: 'invalid_event_format',
+          message: 'Webhook event format is invalid or corrupted'
+        }, { status: 422 });
+      } else {
+        // Re-throw for general error handling
+        throw constructError;
+      }
+    }
     
     monitoring.recordWebhookReceived(event.type);
     
@@ -243,7 +301,55 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const businessLogicTimer = createTimedLogger(requestId, 'business-logic-processing');
     businessLogicTimer.start();
     
-    const info = processPaymentIntentWebhook(event);
+    let info: any;
+    try {
+      info = processPaymentIntentWebhook(event);
+      businessLogicTimer.end(true, { 
+        paymentIntentId: info.paymentIntentId, 
+        status: info.status 
+      });
+    } catch (processingError) {
+      businessLogicTimer.end(false, { 
+        error: processingError instanceof Error ? processingError.message : 'Unknown processing error' 
+      });
+      
+      // Check if this is a data validation error
+      const errorMessage = processingError instanceof Error ? processingError.message.toLowerCase() : '';
+      
+      if (errorMessage.includes('invalid') || errorMessage.includes('missing') || 
+          errorMessage.includes('corrupt') || errorMessage.includes('malformed') ||
+          errorMessage.includes('data')) {
+        
+        monitoring.recordWebhookError('invalid_webhook_data', {
+          error: processingError instanceof Error ? processingError.message : 'Unknown processing error',
+          eventId: event.id,
+          sourceIp,
+          timestamp: new Date().toISOString(),
+        });
+        
+        webhookLogger.log(LogLevel.WARN, 'Invalid webhook data structure', {
+          eventId: event.id,
+          processingId: requestId,
+          metadata: {
+            error: processingError instanceof Error ? processingError.message : 'Unknown processing error',
+            eventType: event.type,
+          },
+          tags: ['webhook', 'validation', 'invalid-data'],
+        });
+        
+        processingTimer.end(false, { reason: 'invalid_webhook_data' });
+        
+        return NextResponse.json({ 
+          received: true,
+          ignored: true,
+          error: 'invalid_webhook_data',
+          message: 'Webhook data structure is invalid or corrupted'
+        }, { status: 422 });
+      } else {
+        // Re-throw for general error handling
+        throw processingError;
+      }
+    }
 
     // Extract metadata for routing and validation
     const metadataTimer = createTimedLogger(requestId, 'metadata-extraction');
@@ -366,6 +472,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     // Enhanced error handling with comprehensive logging
     const message = error instanceof Error ? error.message : 'Unknown error';
+    const messageLower = message.toLowerCase();
     
     // Complete processing metrics with failure
     try {
@@ -375,8 +482,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       // Don't let metrics errors interfere with error response
     }
     
-    // Check if this is a signature/security error vs processing error
-    if (message.includes('signature') || message.includes('verification')) {
+    // Categorize errors for appropriate status codes
+    if (messageLower.includes('signature') || messageLower.includes('verification')) {
+      // Signature/security errors
       monitoring.recordWebhookSignatureInvalid();
       
       webhookLogger.log(LogLevel.ERROR, 'Webhook security error', {
@@ -395,8 +503,62 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         error: 'invalid_signature', 
         message: 'Webhook verification failed' 
       }, { status: 400 });
+      
+    } else if (messageLower.includes('json') || messageLower.includes('parse') || 
+               messageLower.includes('malformed') || messageLower.includes('corrupt') ||
+               messageLower.includes('invalid_request_error') || messageLower.includes('validation')) {
+      // Data format/validation errors - client errors (4xx)
+      monitoring.recordWebhookError('invalid_data', {
+        error: message,
+        sourceIp,
+        timestamp: new Date().toISOString(),
+      });
+      
+      webhookLogger.log(LogLevel.WARN, 'Webhook data validation error', {
+        processingId: requestId,
+        metadata: {
+          error: message,
+          sourceIp,
+          userAgent,
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+        tags: ['webhook', 'error', 'validation'],
+        error: error instanceof Error ? error : undefined,
+      });
+      
+      return NextResponse.json({ 
+        error: 'invalid_data', 
+        message: 'Webhook data is invalid or corrupted' 
+      }, { status: 422 });
+      
+    } else if (messageLower.includes('timeout') || messageLower.includes('network') ||
+               messageLower.includes('connection') || messageLower.includes('unavailable')) {
+      // Network/timeout errors - server error but retryable
+      monitoring.recordWebhookError('network_error', {
+        error: message,
+        sourceIp,
+        timestamp: new Date().toISOString(),
+      });
+      
+      webhookLogger.log(LogLevel.ERROR, 'Webhook network error', {
+        processingId: requestId,
+        metadata: {
+          error: message,
+          sourceIp,
+          userAgent,
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+        tags: ['webhook', 'error', 'network'],
+        error: error instanceof Error ? error : undefined,
+      });
+      
+      return NextResponse.json({ 
+        error: 'network_error', 
+        message: 'Network or timeout error during processing' 
+      }, { status: 503 });
+      
     } else {
-      // General processing error
+      // General processing error - server error
       monitoring.recordWebhookError('processing_exception', {
         error: message,
         sourceIp,

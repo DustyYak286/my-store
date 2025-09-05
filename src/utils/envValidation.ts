@@ -69,6 +69,14 @@ const ENV_SCHEMAS: EnvValidationSchema[] = [
     description: 'Email validation regex pattern',
   },
   {
+    key: 'NEXT_PUBLIC_VALIDATION_EMAIL_MAX_LENGTH',
+    category: 'Validation',
+    type: 'number',
+    min: 50,
+    max: 254,
+    description: 'Maximum length for email addresses (50-254, RFC 5321 compliant)',
+  },
+  {
     key: 'NEXT_PUBLIC_VALIDATION_POSTAL_CODE_REGEX',
     category: 'Validation',
     type: 'regex',
@@ -585,6 +593,7 @@ export interface TypedEnvironment {
   // Validation Configuration
   validation: {
     emailRegex: RegExp;
+    emailMaxLength: number;
     postalCodeRegex: RegExp;
     nameMinLength: number;
     nameMaxLength: number;
@@ -667,6 +676,7 @@ export const createTypedEnvironment = (
     
     validation: {
       emailRegex: createRegex(env.NEXT_PUBLIC_VALIDATION_EMAIL_REGEX, '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$'),
+      emailMaxLength: parseInt(env.NEXT_PUBLIC_VALIDATION_EMAIL_MAX_LENGTH ?? '150'),
       postalCodeRegex: createRegex(env.NEXT_PUBLIC_VALIDATION_POSTAL_CODE_REGEX, '^[A-Za-z0-9\\s-]{3,10}$'),
       nameMinLength: parseNumber(env.NEXT_PUBLIC_VALIDATION_NAME_MIN_LENGTH, 2),
       nameMaxLength: parseNumber(env.NEXT_PUBLIC_VALIDATION_NAME_MAX_LENGTH, 50),

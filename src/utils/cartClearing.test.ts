@@ -11,6 +11,10 @@ import {
 } from './cartClearing';
 import { Order, OrderStatus, PaymentStatus } from '@/types/order';
 import { monitoring } from '@/utils/monitoring';
+import { 
+  expectMonitoringEventCalled,
+  expectCartClearingEventsCalled 
+} from '@/../tests/helpers/monitoringAssertions';
 
 // Mock the monitoring utility
 jest.mock('@/utils/monitoring', () => ({
@@ -97,20 +101,13 @@ describe('cartClearing', () => {
       expect(result.orderId).toBe('order_123');
       expect(typeof result.timestamp).toBe('string');
 
-      // Verify monitoring calls
-      expect(mockMonitoring.recordEvent).toHaveBeenCalledWith('cart_clearing_attempted', {
-        orderId: 'order_123',
-        sessionId: 'session_test123',
-        hasSessionId: true,
-        reason: 'Test payment success',
-      });
-
-      expect(mockMonitoring.recordEvent).toHaveBeenCalledWith('cart_clearing_success', {
-        orderId: 'order_123',
-        sessionId: 'session_test123',
-        method: 'session_based',
-        reason: 'Test payment success',
-      });
+      // Verify monitoring calls with enhanced assertions
+      expectCartClearingEventsCalled(
+        mockMonitoring,
+        'order_123',
+        'session_test123',
+        'Test payment success'
+      );
     });
 
     it('should fallback to order-based clearing when no session ID', async () => {
@@ -128,19 +125,33 @@ describe('cartClearing', () => {
       expect(result.sessionId).toBeUndefined();
       expect(result.orderId).toBe('order_123');
 
-      // Verify monitoring calls
-      expect(mockMonitoring.recordEvent).toHaveBeenCalledWith('cart_clearing_attempted', {
-        orderId: 'order_123',
-        sessionId: 'unknown',
-        hasSessionId: false,
-        reason: 'Test payment success',
+      // Enhanced monitoring assertions for order-based clearing
+      expectMonitoringEventCalled(mockMonitoring.recordEvent, {
+        eventType: 'cart_clearing_attempted',
+        expectedPayload: {
+          orderId: 'order_123',
+          sessionId: 'unknown',
+          hasSessionId: false,
+          reason: 'Test payment success',
+        },
+        requiredFields: ['orderId', 'hasSessionId', 'reason']
       });
 
-      expect(mockMonitoring.recordEvent).toHaveBeenCalledWith('cart_clearing_success', {
-        orderId: 'order_123',
-        sessionId: 'none',
-        method: 'order_context',
-        reason: 'Test payment success',
+      expectMonitoringEventCalled(mockMonitoring.recordEvent, {
+        eventType: 'cart_clearing_success',
+        expectedPayload: {
+          orderId: 'order_123',
+          sessionId: 'none',
+          method: 'order_context',
+          reason: 'Test payment success',
+        },
+        requiredFields: ['orderId', 'method', 'reason'],
+        payloadValidation: (payload) => {
+          if (payload.method !== 'order_context') {
+            return `Expected method to be 'order_context', got '${payload.method}'`;
+          }
+          return true;
+        }
       });
     });
 
@@ -320,12 +331,25 @@ describe('cartClearing', () => {
       expect(result.sessionId).toBe('session_manual');
       expect(result.orderId).toBe('order_manual');
 
-      // Verify monitoring call
-      expect(mockMonitoring.recordEvent).toHaveBeenCalledWith('manual_cart_clearing_attempted', {
-        orderId: 'order_manual',
-        sessionId: 'session_manual',
-        reason: 'Admin requested clearing',
-        source: 'manual',
+      // Enhanced monitoring assertion for manual clearing
+      expectMonitoringEventCalled(mockMonitoring.recordEvent, {
+        eventType: 'manual_cart_clearing_attempted',
+        expectedPayload: {
+          orderId: 'order_manual',
+          sessionId: 'session_manual',
+          reason: 'Admin requested clearing',
+          source: 'manual',
+        },
+        requiredFields: ['orderId', 'sessionId', 'reason', 'source'],
+        payloadValidation: (payload) => {
+          if (payload.source !== 'manual') {
+            return `Expected source to be 'manual', got '${payload.source}'`;
+          }
+          if (!payload.reason || payload.reason.length === 0) {
+            return 'Reason is required and must not be empty';
+          }
+          return true;
+        }
       });
     });
 

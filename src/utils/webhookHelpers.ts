@@ -19,8 +19,21 @@ export function cleanupProcessedEvents(now: number): void {
   }
 }
 
-if (typeof setInterval === 'function') {
-  setInterval(() => cleanupProcessedEvents(Date.now()), DEDUP_CLEANUP_INTERVAL_MS);
+// Cleanup interval reference for proper cleanup
+let helpersCleanupInterval: NodeJS.Timeout | null = null;
+
+// Initialize cleanup only in non-test environments
+if (process.env.NODE_ENV !== 'test' && typeof setInterval === 'function') {
+  helpersCleanupInterval = setInterval(() => cleanupProcessedEvents(Date.now()), DEDUP_CLEANUP_INTERVAL_MS);
+}
+
+// Export cleanup function for tests
+export function clearWebhookHelpersCleanup(): void {
+  if (helpersCleanupInterval) {
+    clearInterval(helpersCleanupInterval);
+    helpersCleanupInterval = null;
+  }
+  processedEventIds.clear();
 }
 
 export function isEventFresh(eventCreatedSeconds: number, maxAgeMs: number): boolean {

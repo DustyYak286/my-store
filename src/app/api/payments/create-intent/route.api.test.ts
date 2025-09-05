@@ -49,6 +49,14 @@ jest.mock('@/lib/orderHelpers', () => ({
       },
     },
   })),
+  updateOrderPayment: jest.fn((order: any, params: any) => ({
+    success: true,
+    order: {
+      ...order,
+      paymentIntentId: params.paymentData.paymentIntentId,
+      paymentIntentStatus: params.paymentData.paymentIntentStatus,
+    },
+  })),
 }));
 
 jest.mock('@/config/stripe', () => ({

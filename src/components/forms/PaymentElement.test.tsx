@@ -27,14 +27,12 @@ const mockPaymentElement = {
   destroy: jest.fn(),
 };
 
-// Mock the Stripe hooks
-jest.mock('@stripe/react-stripe-js', () => ({
-  ...jest.requireActual('@stripe/react-stripe-js'),
-  useStripe: jest.fn(() => mockStripe),
-  useElements: jest.fn(() => mockElements),
-  PaymentElement: jest.fn(({ onChange, onReady, onFocus, onBlur }) => {
-    // Store callbacks for testing
-    (PaymentElement as any).testCallbacks = {
+// Mock the Stripe hooks with factory function to avoid hoisting issues
+jest.mock('@stripe/react-stripe-js', () => {
+  // Create mock PaymentElement inside factory to avoid hoisting
+  const mockComponent = jest.fn(({ onChange, onReady, onFocus, onBlur }) => {
+    // Store callbacks for testing on the mock function
+    mockComponent.testCallbacks = {
       onChange,
       onReady,
       onFocus,
@@ -51,8 +49,15 @@ jest.mock('@stripe/react-stripe-js', () => ({
         />
       </div>
     );
-  }),
-}));
+  });
+
+  return {
+    ...jest.requireActual('@stripe/react-stripe-js'),
+    useStripe: jest.fn(() => mockStripe),
+    useElements: jest.fn(() => mockElements),
+    PaymentElement: mockComponent,
+  };
+});
 
 // Mock Stripe client
 jest.mock('@/lib/stripe-client', () => ({
@@ -79,11 +84,16 @@ const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <div data-testid="test-wrapper">{children}</div>;
 };
 
+// Get reference to mocked PaymentElement for testing
+const { PaymentElement: MockedPaymentElement } = jest.requireMock('@stripe/react-stripe-js');
+
 describe('PaymentElement', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset test callbacks
-    (PaymentElement as any).testCallbacks = {};
+    if (MockedPaymentElement.testCallbacks) {
+      MockedPaymentElement.testCallbacks = {};
+    }
   });
 
   describe('Basic Rendering', () => {

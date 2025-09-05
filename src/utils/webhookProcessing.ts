@@ -158,6 +158,64 @@ async function processPaymentSucceeded(
   const now = new Date().toISOString();
 
   try {
+    // Get the original order to validate payment integrity
+    const originalOrder = getOrderById(orderId);
+    if (!originalOrder) {
+      return {
+        success: false,
+        orderId,
+        error: 'Order not found for payment verification',
+      };
+    }
+
+    // CRITICAL SECURITY: Validate payment amount against original order
+    // Skip validation if order is already paid (idempotent webhook handling)
+    if (originalOrder.status !== 'paid') {
+      const expectedAmount = originalOrder.payment?.amount || 
+                            (originalOrder.totals?.total ? Math.round(originalOrder.totals.total * 100) : 0) ||
+                            (originalOrder.total ? Math.round(originalOrder.total * 100) : 0);
+      
+      if (expectedAmount === 0) {
+        monitoring.recordWebhookError('amount_verification_failed', {
+          orderId,
+          reason: 'Could not determine expected amount from order',
+          orderData: {
+            payment: originalOrder.payment,
+            totals: originalOrder.totals,
+            total: originalOrder.total
+          }
+        });
+        throw new Error(`Payment amount verification failed: Could not determine expected amount for order ${orderId}`);
+      }
+
+      if (Math.abs(paymentIntent.amount - expectedAmount) > 1) { // Allow 1 bani tolerance for rounding
+        monitoring.recordWebhookError('payment_tampering_detected', {
+          orderId,
+          expectedAmount,
+          actualAmount: paymentIntent.amount,
+          difference: paymentIntent.amount - expectedAmount,
+          paymentIntentId: paymentIntent.id,
+          webhook: event.id
+        });
+        throw new Error(`Payment amount tampering detected: expected ${expectedAmount} bani, got ${paymentIntent.amount} bani for order ${orderId}`);
+      }
+    } else {
+      // Order already paid - this is likely a duplicate webhook, still verify amount but be more lenient
+      const currentAmount = originalOrder.payment?.amount;
+      if (currentAmount && Math.abs(paymentIntent.amount - currentAmount) > 1) {
+        monitoring.recordWebhookError('duplicate_webhook_amount_mismatch', {
+          orderId,
+          currentAmount,
+          webhookAmount: paymentIntent.amount,
+          difference: paymentIntent.amount - currentAmount,
+          paymentIntentId: paymentIntent.id,
+          webhook: event.id
+        });
+        // Log but don't throw - allow idempotent processing to continue
+        console.warn(`⚠️ Duplicate webhook amount mismatch for paid order ${orderId}: expected ${currentAmount}, got ${paymentIntent.amount}`);
+      }
+    }
+
     // Update payment information first
     const paymentUpdateResult = updateStoredOrderPayment(
       orderId,
@@ -206,7 +264,7 @@ async function processPaymentSucceeded(
 
     // If order is still PENDING, transition to PROCESSING first
     if (currentOrder.status === OrderStatus.PENDING) {
-      const processingUpdateResult = updateStoredOrderStatus(
+      const processingUpdateResult = await updateStoredOrderStatus(
         orderId,
         OrderStatus.PROCESSING,
         'Payment processing via Stripe webhook',
@@ -234,32 +292,48 @@ async function processPaymentSucceeded(
       }
     }
 
-    // Update order status to PAID
-    const statusUpdateResult = updateStoredOrderStatus(
-      orderId,
-      OrderStatus.PAID,
-      'Payment confirmed via Stripe webhook',
-      'stripe_webhook',
-      {
-        webhookEventId: event.id,
-        webhookEventType: event.type,
-        paymentIntentId: paymentIntent.id,
-        amount: paymentIntent.amount,
-        currency: paymentIntent.currency,
-        processedAt: now,
-      }
-    );
-
-    if (!statusUpdateResult.success) {
-      monitoring.recordWebhookError('status_update_failed', { 
-        orderId, 
-        error: statusUpdateResult.error 
-      });
+    // Update order status to PAID (only if not already PAID - idempotent webhook handling)
+    const refreshedOrder = getOrderById(orderId);
+    if (!refreshedOrder) {
       return {
         success: false,
         orderId,
-        error: `Failed to update order status: ${statusUpdateResult.error}`,
+        error: 'Order not found when updating status to PAID',
       };
+    }
+
+    let statusUpdateResult: { success: boolean; error?: string } = { success: true };
+    
+    if (refreshedOrder.status !== OrderStatus.PAID) {
+      statusUpdateResult = await updateStoredOrderStatus(
+        orderId,
+        OrderStatus.PAID,
+        'Payment confirmed via Stripe webhook',
+        'stripe_webhook',
+        {
+          webhookEventId: event.id,
+          webhookEventType: event.type,
+          paymentIntentId: paymentIntent.id,
+          amount: paymentIntent.amount,
+          currency: paymentIntent.currency,
+          processedAt: now,
+        }
+      );
+
+      if (!statusUpdateResult.success) {
+        monitoring.recordWebhookError('status_update_failed', { 
+          orderId, 
+          error: statusUpdateResult.error 
+        });
+        return {
+          success: false,
+          orderId,
+          error: `Failed to update order status: ${statusUpdateResult.error}`,
+        };
+      }
+    } else {
+      // Order already PAID - idempotent webhook processing
+      console.log(`ℹ️ Order ${orderId} already in PAID status - idempotent webhook processing`);
     }
 
     // Clear the cart after successful payment
@@ -492,7 +566,7 @@ async function processPaymentFailed(
 
     // If order is still PENDING, transition to PROCESSING first before FAILED
     if (currentOrder.status === OrderStatus.PENDING) {
-      const processingUpdateResult = updateStoredOrderStatus(
+      const processingUpdateResult = await updateStoredOrderStatus(
         orderId,
         OrderStatus.PROCESSING,
         'Payment processing started via Stripe webhook',
@@ -521,7 +595,7 @@ async function processPaymentFailed(
     }
 
     // Update order status to FAILED
-    const statusUpdateResult = updateStoredOrderStatus(
+    const statusUpdateResult = await updateStoredOrderStatus(
       orderId,
       OrderStatus.FAILED,
       `Payment failed: ${failureReason}`,

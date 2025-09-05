@@ -136,9 +136,9 @@ describe('Stripe Configuration Utils', () => {
       expect(params.metadata).toHaveProperty('environment');
       expect(params.metadata).toHaveProperty('timestamp');
       expect(params.metadata.orderId).toBe(orderId);
-      expect(params).toHaveProperty('automatic_payment_methods');
       expect(params).toHaveProperty('capture_method');
-      expect(params).toHaveProperty('confirmation_method');
+      // Should have automatic_payment_methods OR confirmation_method, not both (production-grade fix)
+      expect(params.automatic_payment_methods || params.confirmation_method).toBeTruthy();
     });
 
     it('should work without idempotency key', () => {

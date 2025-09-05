@@ -117,7 +117,12 @@ describe('Webhook Security', () => {
 
     it('should reject old timestamp', () => {
       const oldTimestamp = Math.floor(Date.now() / 1000) - 600; // 10 minutes ago
-      const result = validateTimestamp(oldTimestamp);
+      const strictConfig = {
+        ...DEFAULT_SECURITY_CONFIG,
+        maxEventAge: 5 * 60 * 1000, // 5 minutes
+        strictTimestampValidation: true
+      };
+      const result = validateTimestamp(oldTimestamp, strictConfig);
       
       expect(result.isValid).toBe(false);
       expect(result.reason).toBe('event_too_old_strict');
@@ -125,7 +130,11 @@ describe('Webhook Security', () => {
 
     it('should reject future timestamp in strict mode', () => {
       const futureTimestamp = Math.floor(Date.now() / 1000) + 120; // 2 minutes in future
-      const result = validateTimestamp(futureTimestamp);
+      const strictConfig = {
+        ...DEFAULT_SECURITY_CONFIG,
+        strictTimestampValidation: true
+      };
+      const result = validateTimestamp(futureTimestamp, strictConfig);
       
       expect(result.isValid).toBe(false);
       expect(result.reason).toBe('future_event');
@@ -329,13 +338,21 @@ describe('Webhook Security', () => {
       const sourceIp = '127.0.0.1';
       const secret = 'whsec_test123';
       
+      // Use strict config to ensure timestamp validation fails
+      const strictConfig = {
+        ...DEFAULT_SECURITY_CONFIG,
+        maxEventAge: 5 * 60 * 1000, // 5 minutes (timestamp is ~16 minutes old)
+        strictTimestampValidation: true
+      };
+      
       const result = await validateWebhookSecurity(
         largePayload,
         invalidSignature,
         secret,
         eventId,
         oldTimestamp,
-        sourceIp
+        sourceIp,
+        strictConfig
       );
       
       expect(result.isValid).toBe(false);

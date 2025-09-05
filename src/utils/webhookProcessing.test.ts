@@ -85,7 +85,9 @@ describe('Webhook Processing', () => {
       const order = orderResult.order;
       storeOrder(order);
 
-      // Create a mock Stripe event
+      // Create a mock Stripe event with amount matching the order total (including tax)
+      // Order totals are already in bani (smallest currency unit)
+      const orderAmountInBani = order.totals?.total || order.total;
       const mockEvent: Stripe.Event = {
         id: 'evt_test123',
         object: 'event',
@@ -94,7 +96,7 @@ describe('Webhook Processing', () => {
         data: {
           object: {
             id: 'pi_test123',
-            amount: 1000,
+            amount: orderAmountInBani, // Amount in bani (RON cents)
             currency: 'ron',
             status: 'succeeded',
             charges: {
@@ -122,7 +124,8 @@ describe('Webhook Processing', () => {
       // Process the webhook event
       const result = await processWebhookEvent(mockEvent, metadata);
 
-      // Verify the result
+
+      // Verify the result  
       expect(result.success).toBe(true);
       expect(result.orderId).toBe(order.id);
       expect(result.action).toBe('payment_confirmed');
@@ -151,7 +154,7 @@ describe('Webhook Processing', () => {
       expect(monitoring.recordWebhookOrderUpdated).toHaveBeenCalledWith(
         order.id,
         OrderStatus.PAID,
-        1000
+        order.totals?.total || order.total
       );
     });
 
@@ -191,7 +194,9 @@ describe('Webhook Processing', () => {
       const order = orderResult.order;
       storeOrder(order);
 
-      // Create a mock Stripe event for payment failure
+      // Create a mock Stripe event for payment failure  
+      // Order totals are already in bani (smallest currency unit)
+      const orderAmountInBani = order.totals?.total || order.total;
       const mockEvent: Stripe.Event = {
         id: 'evt_test123',
         object: 'event',
@@ -200,7 +205,7 @@ describe('Webhook Processing', () => {
         data: {
           object: {
             id: 'pi_test123',
-            amount: 1000,
+            amount: orderAmountInBani,
             currency: 'ron',
             status: 'payment_failed',
             last_payment_error: {
@@ -236,10 +241,8 @@ describe('Webhook Processing', () => {
       // Process the webhook event
       const result = await processWebhookEvent(mockEvent, metadata);
 
+
       // Verify the result
-      if (!result.success) {
-        console.log('Result error:', result.error);
-      }
       expect(result.success).toBe(true);
       expect(result.orderId).toBe(order.id);
       expect(result.action).toBe('payment_failed');
@@ -258,7 +261,7 @@ describe('Webhook Processing', () => {
       expect(monitoring.recordWebhookOrderUpdated).toHaveBeenCalledWith(
         order.id,
         OrderStatus.FAILED,
-        1000
+        orderAmountInBani
       );
     });
 
@@ -271,7 +274,7 @@ describe('Webhook Processing', () => {
         data: {
           object: {
             id: 'pi_test123',
-            amount: 1000,
+            amount: 1000, // 10.00 RON in bani (this test doesn't use a real order)
             currency: 'ron',
             status: 'succeeded',
           } as Stripe.PaymentIntent,
@@ -431,7 +434,7 @@ describe('Webhook Processing', () => {
           object: {
             id: 'pi_test123',
             object: 'payment_intent',
-            amount: 1000,
+            amount: order.totals?.total || order.total, // Amount already in bani
             currency: 'ron',
             status: 'succeeded',
             payment_method: 'pm_test123',
@@ -527,7 +530,7 @@ describe('Webhook Processing', () => {
           object: {
             id: 'pi_test123',
             object: 'payment_intent',
-            amount: 1000,
+            amount: order.totals?.total || order.total, // Amount already in bani
             currency: 'ron',
             status: 'succeeded',
             payment_method: 'pm_test123',
@@ -573,7 +576,7 @@ describe('Webhook Processing', () => {
         data: {
           object: {
             id: 'pi_test123',
-            amount: 1000,
+            amount: 1000, // 10.00 RON in bani (this test is just for event type validation)
             currency: 'ron',
           } as Stripe.PaymentIntent,
         },
@@ -634,7 +637,7 @@ describe('Webhook Processing', () => {
         data: {
           object: {
             id: 'pi_test123',
-            amount: 1000,
+            amount: 1000, // 10.00 RON in bani (this test is just for metadata validation)
             currency: 'ron',
           } as Stripe.PaymentIntent,
         },

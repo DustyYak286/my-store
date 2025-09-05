@@ -6,7 +6,7 @@
  */
 
 type Tier = 'burst' | 'payment' | 'general' | 'suspicious';
-type HistogramKey = 'api.create_intent' | 'stripe.create_payment_intent' | 'api.webhook' | 'client.payment_processing';
+type HistogramKey = 'api.create_intent' | 'api.initialize_intent' | 'stripe.create_payment_intent' | 'stripe.initialize_payment_intent' | 'api.webhook' | 'client.payment_processing';
 
 interface HistogramBuckets {
   bounds: number[];
@@ -42,7 +42,9 @@ class MetricsRegistry {
 
   private histograms: Record<HistogramKey, HistogramBuckets> = {
     'api.create_intent': { bounds: [100, 300, 1000, 3000, 10000, Infinity], counts: [0, 0, 0, 0, 0, 0] },
+    'api.initialize_intent': { bounds: [50, 150, 500, 1000, 3000, Infinity], counts: [0, 0, 0, 0, 0, 0] },
     'stripe.create_payment_intent': { bounds: [50, 200, 500, 1000, 3000, Infinity], counts: [0, 0, 0, 0, 0, 0] },
+    'stripe.initialize_payment_intent': { bounds: [50, 150, 500, 1000, 3000, Infinity], counts: [0, 0, 0, 0, 0, 0] },
     'api.webhook': { bounds: [10, 50, 200, 500, 2000, Infinity], counts: [0, 0, 0, 0, 0, 0] },
     'client.payment_processing': { bounds: [1000, 5000, 15000, 30000, 60000, Infinity], counts: [0, 0, 0, 0, 0, 0] },
   };
@@ -236,7 +238,9 @@ class MetricsRegistry {
       },
       histograms: {
         api: { bounds: this.histograms['api.create_intent'].bounds, counts: [...this.histograms['api.create_intent'].counts] },
+        apiInit: { bounds: this.histograms['api.initialize_intent'].bounds, counts: [...this.histograms['api.initialize_intent'].counts] },
         stripe: { bounds: this.histograms['stripe.create_payment_intent'].bounds, counts: [...this.histograms['stripe.create_payment_intent'].counts] },
+        stripeInit: { bounds: this.histograms['stripe.initialize_payment_intent'].bounds, counts: [...this.histograms['stripe.initialize_payment_intent'].counts] },
         webhook: { bounds: this.histograms['api.webhook'].bounds, counts: [...this.histograms['api.webhook'].counts] },
         clientPayment: { bounds: this.histograms['client.payment_processing'].bounds, counts: [...this.histograms['client.payment_processing'].counts] },
       },

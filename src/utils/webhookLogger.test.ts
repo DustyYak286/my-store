@@ -316,11 +316,12 @@ describe('WebhookLogger', () => {
 });
 
 describe('createTimedLogger', () => {
-  it('should measure operation duration', () => {
+  it('should measure operation duration', (done) => {
     const processingId = 'timed_test_123';
     const operation = 'test-operation';
     
-    const timedLogger = createTimedLogger(processingId, operation);
+    // Configure logger to accept DEBUG level logs for this test
+    const timedLogger = createTimedLogger(processingId, operation, LogLevel.DEBUG);
     
     const consoleSpy = jest.spyOn(console, 'debug').mockImplementation();
     
@@ -344,6 +345,7 @@ describe('createTimedLogger', () => {
       );
       
       consoleSpy.mockRestore();
+      done();
     }, 10);
   });
 
@@ -351,7 +353,8 @@ describe('createTimedLogger', () => {
     const processingId = 'timed_fail_123';
     const operation = 'fail-operation';
     
-    const timedLogger = createTimedLogger(processingId, operation);
+    // Configure logger to accept DEBUG/WARN level logs for this test
+    const timedLogger = createTimedLogger(processingId, operation, LogLevel.DEBUG);
     
     const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
     

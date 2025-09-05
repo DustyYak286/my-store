@@ -8,9 +8,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createPaymentIntent, handleStripeError } from '@/lib/stripe';
+import { stripeOperations } from '@/lib/stripeClient';
+import { handleStripeError } from '@/lib/stripe';
 import { createOrder, validateCreateOrderRequest } from '@/lib/orderHelpers';
-import { storeOrder } from '@/lib/orderStore';
+import { storeOrder, updateStoredOrderPayment } from '@/lib/orderStore';
 import { getPaymentIntentParams, stripeConfig } from '@/config/stripe';
 import { PAYMENT_LIMITS, toStripeAmount, validatePaymentAmount, validateCurrency } from '@/constants/payments';
 import { 
@@ -503,16 +504,20 @@ function calculateAndValidateAmount(items: CartItem[]): {
       };
     }
     
-    // Convert to smallest currency unit (bani)
-    const amountInBani = toStripeAmount(totalAmount);
+    // Calculate tax (19% VAT for Romania) 
+    const subtotalInBani = toStripeAmount(totalAmount);
+    const taxRate = 0.19; // 19% Romanian VAT
+    const taxInBani = Math.round(subtotalInBani * taxRate);
+    const totalWithTaxInBani = subtotalInBani + taxInBani;
+    const totalWithTaxInRON = totalAmount * (1 + taxRate);
     
     return {
       isValid: true,
-      amount: amountInBani,
-      totalInRON: totalAmount,
+      amount: totalWithTaxInBani,
+      totalInRON: totalWithTaxInRON,
       details: {
         itemBreakdown,
-        grandTotal: totalAmount,
+        grandTotal: totalWithTaxInRON,
       },
     };
   } catch (error) {
@@ -601,12 +606,66 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
       });
     }
 
-    // Parse request body
+    // Parse request body with size and safety checks
     let requestData: CreatePaymentIntentRequest;
     try {
+      // Check Content-Length header for extremely large requests
+      const contentLengthHeader = request.headers.get('content-length');
+      const MAX_REQUEST_SIZE = 5 * 1024 * 1024; // 5MB limit
+      
+      if (contentLengthHeader) {
+        const contentLength = parseInt(contentLengthHeader, 10);
+        if (contentLength > MAX_REQUEST_SIZE) {
+          console.warn(`⚠️ Request too large - Request ID: ${requestId}: ${contentLength} bytes`);
+          monitoring.recordValidationError('payload_too_large');
+          return NextResponse.json({
+            success: false,
+            error: {
+              code: 'PAYLOAD_TOO_LARGE',
+              message: `Request payload too large. Maximum size is ${(MAX_REQUEST_SIZE / (1024 * 1024)).toFixed(1)}MB.`,
+              type: 'validation_error',
+            },
+            requestId,
+          }, { status: 413 });
+        }
+      }
+
       requestData = await request.json();
+      
+      // Additional check for object depth and complexity
+      const jsonString = JSON.stringify(requestData);
+      if (jsonString.length > MAX_REQUEST_SIZE) {
+        console.warn(`⚠️ Request payload too complex - Request ID: ${requestId}: ${jsonString.length} chars`);
+        monitoring.recordValidationError('payload_too_complex');
+        return NextResponse.json({
+          success: false,
+          error: {
+            code: 'PAYLOAD_TOO_COMPLEX',
+            message: 'Request payload too complex or too large.',
+            type: 'validation_error',
+          },
+          requestId,
+        }, { status: 413 });
+      }
+      
     } catch (parseError) {
       console.error(`❌ JSON parsing failed - Request ID: ${requestId}:`, parseError);
+      
+      // Check if it's a size/memory related error
+      const errorMessage = parseError instanceof Error ? parseError.message.toLowerCase() : '';
+      if (errorMessage.includes('heap') || errorMessage.includes('memory') || errorMessage.includes('size')) {
+        monitoring.recordValidationError('payload_too_large');
+        return NextResponse.json({
+          success: false,
+          error: {
+            code: 'PAYLOAD_TOO_LARGE',
+            message: 'Request payload is too large to process.',
+            type: 'validation_error',
+          },
+          requestId,
+        }, { status: 413 });
+      }
+      
       monitoring.recordValidationError('invalid_json');
       return NextResponse.json({
         success: false,
@@ -823,12 +882,24 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
     
     // Create payment intent with idempotency key
     const stopStripeTimer = monitoring.startTimer('stripe.create_payment_intent');
-    const paymentIntent = await createPaymentIntent(paymentIntentParams, {
-      idempotencyKey,
-    });
+    const paymentIntent = await stripeOperations.createPaymentIntent(paymentIntentParams);
     stopStripeTimer();
     
     console.log(`✅ Payment intent created - PI ID: ${paymentIntent.id}, Order ID: ${order.id}, Request ID: ${requestId}`);
+    
+    // Update order with payment intent information
+    const orderUpdateResult = updateStoredOrderPayment(order.id, {
+      paymentIntentId: paymentIntent.id,
+      paymentIntentStatus: paymentIntent.status,
+      paymentIntentAmount: paymentIntent.amount,
+      paymentIntentCurrency: paymentIntent.currency,
+    }, 'payment_intent_creation');
+    
+    if (!orderUpdateResult.success) {
+      console.warn(`⚠️ Failed to update order with payment intent - Order ID: ${order.id}, Error: ${orderUpdateResult.error}`);
+    } else {
+      console.log(`✅ Order updated with payment intent - Order ID: ${order.id}, PI ID: ${paymentIntent.id}`);
+    }
     
     // Log all warnings and security information
     const allWarnings = [
