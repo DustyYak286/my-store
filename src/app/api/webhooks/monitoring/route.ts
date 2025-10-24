@@ -21,7 +21,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const healthStatus = getWebhookHealthStatus();
     const processingStats = webhookLogger.getProcessingStats();
     const securityStats = getSecurityStats();
-    const monitoringStats = monitoring.getMetrics();
+    const monitoringStats = monitoring.snapshot() as any;
 
     // Build response
     const response: any = {

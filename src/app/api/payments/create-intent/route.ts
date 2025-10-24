@@ -214,11 +214,11 @@ async function validateRequestSecurity(request: NextRequest): Promise<{
   const warnings: string[] = [];
   
   // 1. Rate limiting check (first line of defense)
-  console.log('🔒 Checking rate limits...');
+  console.log('[LOCK] Checking rate limits...');
   const rateLimitResult = checkMultiTierRateLimit(request);
   
   if (!rateLimitResult.allowed) {
-    console.warn(`⚠️ Rate limit exceeded - Tier: ${rateLimitResult.tier}, Retry after: ${rateLimitResult.retryAfter}s`);
+    console.warn(`[WARN] Rate limit exceeded - Tier: ${rateLimitResult.tier}, Retry after: ${rateLimitResult.retryAfter}s`);
     return {
       isValid: false,
       error: `Rate limit exceeded. Please try again in ${rateLimitResult.retryAfter} seconds.`,
@@ -229,11 +229,11 @@ async function validateRequestSecurity(request: NextRequest): Promise<{
   }
   
   // 2. Header security validation
-  console.log('🔒 Validating request headers...');
+  console.log('[LOCK] Validating request headers...');
   const headerValidation = validateRequestHeaders(request);
   
   if (!headerValidation.isValid) {
-    console.error('❌ Header validation failed:', headerValidation.threats);
+    console.error('[ERROR] Header validation failed:', headerValidation.threats);
     markSuspiciousActivity(request, 'Header validation failed: ' + headerValidation.threats.join(', '));
     
     return {
@@ -248,35 +248,35 @@ async function validateRequestSecurity(request: NextRequest): Promise<{
   
   if (headerValidation.warnings.length > 0) {
     warnings.push(...headerValidation.warnings);
-    console.warn('⚠️ Header warnings:', headerValidation.warnings);
+    console.warn('[WARN] Header warnings:', headerValidation.warnings);
   }
   
   // 3. IP address validation
-  console.log('🔒 Validating client IP...');
+  console.log('[LOCK] Validating client IP...');
   const clientIp = getClientIpAddress(request);
   
   if (clientIp) {
     const ipValidation = validateClientIP(clientIp);
     
     if (!ipValidation.isValid) {
-      console.warn('⚠️ Invalid IP format:', clientIp);
+      console.warn('[WARN] Invalid IP format:', clientIp);
       warnings.push('Invalid IP address format');
     }
     
     if (ipValidation.isSuspicious) {
-      console.warn('🚨 Suspicious IP detected:', clientIp, ipValidation.warnings);
+      console.warn('[ALERT] Suspicious IP detected:', clientIp, ipValidation.warnings);
       warnings.push(...ipValidation.warnings);
       markSuspiciousActivity(request, 'Suspicious IP: ' + ipValidation.warnings.join(', '));
     }
   }
   
   // 4. Advanced threat detection
-  console.log('🔒 Running threat detection...');
+  console.log('[LOCK] Running threat detection...');
   const threatDetection = detectThreats(request);
   
   if (threatDetection.shouldBlock) {
     const normalizedRiskLevel = threatDetection.threatLevel === 'none' ? 'low' : threatDetection.threatLevel;
-    console.error('🚨 Critical threats detected:', threatDetection.threats);
+    console.error('[ALERT] Critical threats detected:', threatDetection.threats);
     return {
       isValid: false,
       error: 'Suspicious activity detected. Request blocked for security.',
@@ -288,12 +288,12 @@ async function validateRequestSecurity(request: NextRequest): Promise<{
   }
   
   if (threatDetection.threats.length > 0) {
-    console.warn('⚠️ Security warnings:', threatDetection.threats);
+    console.warn('[WARN] Security warnings:', threatDetection.threats);
     warnings.push(...threatDetection.threats);
   }
   
   // Log security assessment
-  console.log(`✅ Security validation passed - Risk level: ${threatDetection.threatLevel}, IP: ${clientIp}`);
+  console.log(`[SUCCESS] Security validation passed - Risk level: ${threatDetection.threatLevel}, IP: ${clientIp}`);
   
   const normalizedRiskLevel = threatDetection.threatLevel === 'none' ? 'low' : threatDetection.threatLevel;
   return {
@@ -318,11 +318,11 @@ function validatePaymentRequest(data: CreatePaymentIntentRequest): {
   const warnings: string[] = [];
   
   // 1. Security threat detection on raw input
-  console.log('🔒 Scanning request data for security threats...');
+  console.log('[LOCK] Scanning request data for security threats...');
   const threatAnalysis = detectAttackPatterns(data);
   
   if (threatAnalysis.riskLevel === 'critical' || threatAnalysis.riskLevel === 'high') {
-    console.error('🚨 Security threats detected in request data:', threatAnalysis.threats);
+    console.error('[ALERT] Security threats detected in request data:', threatAnalysis.threats);
     errors.push('Security validation failed: suspicious patterns detected in request data');
     
     return {
@@ -334,16 +334,16 @@ function validatePaymentRequest(data: CreatePaymentIntentRequest): {
   }
   
   if (threatAnalysis.threats.length > 0) {
-    console.warn('⚠️ Security warnings in request data:', threatAnalysis.threats);
+    console.warn('[WARN] Security warnings in request data:', threatAnalysis.threats);
     warnings.push(...threatAnalysis.threats.map(t => `Security warning: ${t}`));
   }
   
   // 2. Input sanitization and structure validation
-  console.log('🔒 Sanitizing and validating request structure...');
+  console.log('[LOCK] Sanitizing and validating request structure...');
   const structureValidation = validateRequestStructure(data);
   
   if (!structureValidation.isValid) {
-    console.error('❌ Request structure validation failed:', structureValidation.errors);
+    console.error('[ERROR] Request structure validation failed:', structureValidation.errors);
     errors.push(...structureValidation.errors);
     
     return {
@@ -355,10 +355,10 @@ function validatePaymentRequest(data: CreatePaymentIntentRequest): {
   }
   
   const sanitizedData = structureValidation.sanitizedData!;
-  console.log('✅ Request data sanitized successfully');
+  console.log('[SUCCESS] Request data sanitized successfully');
   
   // 3. Business logic validation on sanitized data
-  console.log('🔒 Performing business logic validation...');
+  console.log('[LOCK] Performing business logic validation...');
   
   // Validate required fields after sanitization
   if (!sanitizedData.customerInfo?.email) {
@@ -425,7 +425,7 @@ function validatePaymentRequest(data: CreatePaymentIntentRequest): {
     warnings.push('Special instructions truncated to 1000 characters');
   }
   
-  console.log(`✅ Business logic validation completed - ${errors.length} errors, ${warnings.length} warnings`);
+  console.log(`[SUCCESS] Business logic validation completed - ${errors.length} errors, ${warnings.length} warnings`);
   
   return {
     isValid: errors.length === 0,
@@ -541,7 +541,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
   const stopApiTimer = monitoring.startTimer('api.create_intent');
   
   try {
-    console.log(`🔄 Payment intent creation started - Request ID: ${requestId}`);
+    console.log(`[REDIRECT] Payment intent creation started - Request ID: ${requestId}`);
     monitoring.recordPaymentAttempt();
     
     // Comprehensive security validation with multi-layer protection
@@ -553,7 +553,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
       const errorCode = securityValidation.rateLimitExceeded ? 'RATE_LIMIT_EXCEEDED' :
                        securityValidation.shouldBlock ? 'REQUEST_BLOCKED' : 'SECURITY_VALIDATION_FAILED';
       
-      console.error(`❌ Security validation failed - Request ID: ${requestId}, Risk: ${securityValidation.riskLevel}`);
+      console.error(`[ERROR] Security validation failed - Request ID: ${requestId}, Risk: ${securityValidation.riskLevel}`);
       
       return NextResponse.json({
         success: false,
@@ -577,7 +577,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
     
     // Log security warnings if any
     if (securityValidation.warnings && securityValidation.warnings.length > 0) {
-      console.warn(`⚠️ Security warnings - Request ID: ${requestId}:`, securityValidation.warnings);
+      console.warn(`[WARN] Security warnings - Request ID: ${requestId}:`, securityValidation.warnings);
     }
     
     // Strict origin allowlist enforcement
@@ -616,7 +616,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
       if (contentLengthHeader) {
         const contentLength = parseInt(contentLengthHeader, 10);
         if (contentLength > MAX_REQUEST_SIZE) {
-          console.warn(`⚠️ Request too large - Request ID: ${requestId}: ${contentLength} bytes`);
+          console.warn(`[WARN] Request too large - Request ID: ${requestId}: ${contentLength} bytes`);
           monitoring.recordValidationError('payload_too_large');
           return NextResponse.json({
             success: false,
@@ -635,7 +635,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
       // Additional check for object depth and complexity
       const jsonString = JSON.stringify(requestData);
       if (jsonString.length > MAX_REQUEST_SIZE) {
-        console.warn(`⚠️ Request payload too complex - Request ID: ${requestId}: ${jsonString.length} chars`);
+        console.warn(`[WARN] Request payload too complex - Request ID: ${requestId}: ${jsonString.length} chars`);
         monitoring.recordValidationError('payload_too_complex');
         return NextResponse.json({
           success: false,
@@ -649,7 +649,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
       }
       
     } catch (parseError) {
-      console.error(`❌ JSON parsing failed - Request ID: ${requestId}:`, parseError);
+      console.error(`[ERROR] JSON parsing failed - Request ID: ${requestId}:`, parseError);
       
       // Check if it's a size/memory related error
       const errorMessage = parseError instanceof Error ? parseError.message.toLowerCase() : '';
@@ -681,7 +681,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
     // Enhanced security-aware payment request validation with input sanitization
     const dataValidation = validatePaymentRequest(requestData);
     if (!dataValidation.isValid) {
-      console.warn(`⚠️ Enhanced validation failed - Request ID: ${requestId}:`, {
+      console.warn(`[WARN] Enhanced validation failed - Request ID: ${requestId}:`, {
         errors: dataValidation.errors,
         securityThreats: dataValidation.securityThreats,
       });
@@ -715,20 +715,20 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
     
     // Use sanitized data for all subsequent processing
     const sanitizedRequestData = dataValidation.sanitizedData!;
-    console.log(`✅ Enhanced validation passed - Request ID: ${requestId}, using sanitized data`);
+    console.log(`[SUCCESS] Enhanced validation passed - Request ID: ${requestId}, using sanitized data`);
     
     // Log security and validation warnings
     if (dataValidation.warnings.length > 0) {
-      console.warn(`⚠️ Validation warnings - Request ID: ${requestId}:`, dataValidation.warnings);
+      console.warn(`[WARN] Validation warnings - Request ID: ${requestId}:`, dataValidation.warnings);
     }
     if (dataValidation.securityThreats && dataValidation.securityThreats.length > 0) {
-      console.warn(`⚠️ Security threats detected but allowed - Request ID: ${requestId}:`, dataValidation.securityThreats);
+      console.warn(`[WARN] Security threats detected but allowed - Request ID: ${requestId}:`, dataValidation.securityThreats);
     }
     
     // Calculate and validate payment amount with comprehensive checks (using sanitized data)
     const amountValidation = calculateAndValidateAmount(sanitizedRequestData.items);
     if (!amountValidation.isValid) {
-      console.warn(`⚠️ Amount validation failed - Request ID: ${requestId}:`, {
+      console.warn(`[WARN] Amount validation failed - Request ID: ${requestId}:`, {
         error: amountValidation.error,
         totalInRON: amountValidation.totalInRON,
         details: amountValidation.details,
@@ -757,7 +757,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
       }, { status: 400 });
     }
     
-    console.log(`✅ Amount validation passed - Request ID: ${requestId}: ${amountValidation.totalInRON} RON (${amountValidation.amount} bani)`);
+    console.log(`[SUCCESS] Amount validation passed - Request ID: ${requestId}: ${amountValidation.totalInRON} RON (${amountValidation.amount} bani)`);
     
     // Get client information for tracking
     const userAgent = request.headers.get('user-agent');
@@ -788,11 +788,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
       metadata: { requestId, securityRiskLevel: securityValidation.riskLevel },
     };
     
-    console.log(`🔄 Creating order - Request ID: ${requestId}`);
+    console.log(`[REDIRECT] Creating order - Request ID: ${requestId}`);
     const orderResult = createOrder(orderRequest);
     
     if (orderResult.validationErrors) {
-      console.error(`❌ Order creation validation failed - Request ID: ${requestId}:`, orderResult.validationErrors);
+      console.error(`[ERROR] Order creation validation failed - Request ID: ${requestId}:`, orderResult.validationErrors);
       return NextResponse.json({
         success: false,
         error: {
@@ -806,11 +806,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
     }
     
     const order = orderResult.order;
-    console.log(`✅ Order created - Order ID: ${order.id}, Request ID: ${requestId}`);
+    console.log(`[SUCCESS] Order created - Order ID: ${order.id}, Request ID: ${requestId}`);
     
     // Store the order in our order store for webhook processing
     storeOrder(order);
-    console.log(`✅ Order stored in order store - Order ID: ${order.id}`);
+    console.log(`[SUCCESS] Order stored in order store - Order ID: ${order.id}`);
     
     // Generate idempotency key for Stripe request (using sanitized data)
     const idempotencyKey = generateIdempotencyKey(sanitizedRequestData, order.id);
@@ -873,11 +873,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
       securityRiskLevel: securityValidation.riskLevel || 'low',
     };
     
-    console.log(`🔄 Creating Stripe payment intent - Order ID: ${order.id}, Order Number: ${order.orderNumber}, Request ID: ${requestId}`);
+    console.log(`[REDIRECT] Creating Stripe payment intent - Order ID: ${order.id}, Order Number: ${order.orderNumber}, Request ID: ${requestId}`);
     
     // Log metadata for webhook processing verification (development only)
     if (process.env.NODE_ENV === 'development') {
-      console.log(`📋 Payment Intent metadata:`, JSON.stringify((paymentIntentParams as any).metadata, null, 2));
+      console.log(`[INFO] Payment Intent metadata:`, JSON.stringify((paymentIntentParams as any).metadata, null, 2));
     }
     
     // Create payment intent with idempotency key
@@ -885,7 +885,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
     const paymentIntent = await stripeOperations.createPaymentIntent(paymentIntentParams);
     stopStripeTimer();
     
-    console.log(`✅ Payment intent created - PI ID: ${paymentIntent.id}, Order ID: ${order.id}, Request ID: ${requestId}`);
+    console.log(`[SUCCESS] Payment intent created - PI ID: ${paymentIntent.id}, Order ID: ${order.id}, Request ID: ${requestId}`);
     
     // Update order with payment intent information
     const orderUpdateResult = updateStoredOrderPayment(order.id, {
@@ -896,9 +896,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
     }, 'payment_intent_creation');
     
     if (!orderUpdateResult.success) {
-      console.warn(`⚠️ Failed to update order with payment intent - Order ID: ${order.id}, Error: ${orderUpdateResult.error}`);
+      console.warn(`[WARN] Failed to update order with payment intent - Order ID: ${order.id}, Error: ${orderUpdateResult.error}`);
     } else {
-      console.log(`✅ Order updated with payment intent - Order ID: ${order.id}, PI ID: ${paymentIntent.id}`);
+      console.log(`[SUCCESS] Order updated with payment intent - Order ID: ${order.id}, PI ID: ${paymentIntent.id}`);
     }
     
     // Log all warnings and security information
@@ -908,7 +908,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
     ];
     
     if (allWarnings.length > 0) {
-      console.warn(`⚠️ Security and validation warnings - Request ID: ${requestId}:`, allWarnings);
+      console.warn(`[WARN] Security and validation warnings - Request ID: ${requestId}:`, allWarnings);
     }
     
     // Return successful response
@@ -935,7 +935,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
       },
     };
     
-    console.log(`✅ Payment intent creation completed - Request ID: ${requestId}`);
+    console.log(`[SUCCESS] Payment intent creation completed - Request ID: ${requestId}`);
     
     monitoring.recordPaymentSuccess();
     return NextResponse.json(response, {
@@ -950,7 +950,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreatePay
     });
     
   } catch (error) {
-    console.error(`❌ Payment intent creation failed - Request ID: ${requestId}:`, error);
+    console.error(`[ERROR] Payment intent creation failed - Request ID: ${requestId}:`, error);
     
     // Handle Stripe-specific errors
     if (error && typeof error === 'object' && 'type' in error) {

@@ -1,0 +1,20 @@
+#!/bin/sh
+#
+# Pre-commit hook to check for Unicode characters in console statements
+# Install with: git config core.hooksPath .githooks
+#
+
+echo "Checking for Unicode characters in console statements..."
+
+# Run the Unicode check
+npm run check:console-unicode
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Pre-commit failed: Unicode characters found in console statements"
+  echo "   Please use ASCII alternatives: [DEBUG], [REDIRECT], [TARGET]"
+  echo "   Run 'npm run check:console-unicode' to see details"
+  exit 1
+fi
+
+echo "✅ Console Unicode validation passed"

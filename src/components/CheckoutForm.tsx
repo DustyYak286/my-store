@@ -119,7 +119,7 @@ function CheckoutFormInner({
         environment: isDevelopment ? 'development' : 'e2e-test'
       };
       
-      console.log('🔧 Enhanced validation analysis:', debugInfo);
+      console.log('[CONFIG] Enhanced validation analysis:', debugInfo);
       
       // Extra logging for failed validation conditions in E2E tests
       if (isE2ETest && !canSubmit) {
@@ -130,7 +130,7 @@ function CheckoutFormInner({
         if (!formValid) failures.push('formValid=false');
         if (isProcessing) failures.push('isProcessing=true');
         
-        console.warn('❌ E2E Test - Submit blocked by:', failures.join(', '));
+        console.warn('[ERROR] E2E Test - Submit blocked by:', failures.join(', '));
         
         // Store debug info on window for Playwright access
         if (typeof window !== 'undefined') {
@@ -154,7 +154,7 @@ function CheckoutFormInner({
     const isE2ETest = typeof window !== 'undefined' && window.navigator.webdriver;
     
     if (isE2ETest) {
-      console.log(`🔧 CheckoutForm - Payment validation change: ${isComplete ? 'COMPLETE' : 'INCOMPLETE'}`);
+      console.log(`[CONFIG] CheckoutForm - Payment validation change: ${isComplete ? 'COMPLETE' : 'INCOMPLETE'}`);
     }
     
     setIsPaymentComplete(isComplete);
@@ -193,7 +193,7 @@ function CheckoutFormInner({
           value: field.value,
           validity: field.validity
         }));
-        console.warn('🔧 Form validation failed. Invalid fields:', invalidFields);
+        console.warn('[CONFIG] Form validation failed. Invalid fields:', invalidFields);
       }
     };
     
@@ -224,7 +224,7 @@ function CheckoutFormInner({
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('🔄 Form submission started');
+    console.log('[REDIRECT] Form submission started');
 
     // Set up global payment monitoring for ALL E2E tests IMMEDIATELY
     const isE2ETest = typeof window !== 'undefined' && window.navigator.webdriver;
@@ -232,14 +232,14 @@ function CheckoutFormInner({
     let globalMonitoringActive = true;
     
     if (isE2ETest) {
-      console.log('🔧 Starting global payment monitoring for E2E test immediately');
+      console.log('[CONFIG] Starting global payment monitoring for E2E test immediately');
       
       const performGlobalRedirect = (reason: string) => {
         if (globalRedirected || !globalMonitoringActive) return;
         globalRedirected = true;
         globalMonitoringActive = false;
         
-        console.log(`🔧 Global payment success detected (${reason}) - redirecting immediately`);
+        console.log(`[CONFIG] Global payment success detected (${reason}) - redirecting immediately`);
         
         // Try to get order info from current paymentIntentInfo
         const currentPI = paymentIntentInfo?.paymentIntentId || 'unknown';
@@ -250,7 +250,7 @@ function CheckoutFormInner({
         successParams.set('payment_intent', currentPI);
         const return_url = `${window.location.origin}/checkout/success?${successParams.toString()}`;
         
-        console.log(`🔄 Redirecting to success page: ${return_url}`);
+        console.log(`[REDIRECT] Redirecting to success page: ${return_url}`);
         
         // Immediate redirect with both strategies
         router.push(return_url);
@@ -269,7 +269,7 @@ function CheckoutFormInner({
           }
           
           // Check payment intent status if we have a clientSecret
-          if (clientSecret) {
+          if (clientSecret && stripe) {
             const latestPI = await stripe.retrievePaymentIntent(clientSecret);
             if (latestPI.paymentIntent?.status === 'succeeded') {
               performGlobalRedirect('global payment intent polling');
@@ -277,7 +277,7 @@ function CheckoutFormInner({
             }
           }
         } catch (error) {
-          console.warn('⚠️ Global payment status check failed:', error);
+          console.warn('[WARN] Global payment status check failed:', error);
         }
         
         // Continue monitoring if still active
@@ -293,7 +293,7 @@ function CheckoutFormInner({
       setTimeout(() => {
         globalMonitoringActive = false;
         if (!globalRedirected) {
-          console.warn('⚠️ Global payment monitoring timeout - no redirect detected');
+          console.warn('[WARN] Global payment monitoring timeout - no redirect detected');
         }
       }, 60000);
     }
@@ -309,7 +309,7 @@ function CheckoutFormInner({
 
     // Ensure we have PaymentIntent information
     if (!paymentIntentInfo) {
-      console.error('❌ PaymentIntent information missing');
+      console.error('[ERROR] PaymentIntent information missing');
       return;
     }
 
@@ -317,20 +317,23 @@ function CheckoutFormInner({
     resetPaymentState();
 
     try {
-      console.log('🔄 Starting single PaymentIntent flow...');
+      console.log('[REDIRECT] Starting single PaymentIntent flow...');
       
       // Extract form data for API call
+      if (!formRef.current) {
+        throw new Error('Checkout form reference not found');
+      }
       const formDataObj = new FormData(formRef.current);
       const data = Object.fromEntries(formDataObj) as Record<string, string>;
       
-      console.log('🔧 Form data for debugging:', {
+      console.log('[CONFIG] Form data for debugging:', {
         sameAsShipping: data.sameAsShipping,
         shippingCountry: data.shippingCountry,
         billingCountry: data.billingCountry,
       });
       
       // Step 1: Update PaymentIntent with finalized customer/shipping information
-      console.log('🔄 Updating PaymentIntent with customer information...');
+      console.log('[REDIRECT] Updating PaymentIntent with customer information...');
       const updateResponse = await fetch('/api/payments/update-intent', {
         method: 'POST',
         headers: {
@@ -341,8 +344,8 @@ function CheckoutFormInner({
           orderDraftId: paymentIntentInfo.orderDraftId,
           customerInfo: {
             email: data.email,
-            firstName: data.shippingFullName.split(' ')[0] || '',
-            lastName: data.shippingFullName.split(' ').slice(1).join(' ') || '',
+            firstName: data.shippingFullName?.split(' ')[0] || '',
+            lastName: data.shippingFullName?.split(' ').slice(1).join(' ') || '',
           },
           shippingAddress: {
             fullName: data.shippingFullName,
@@ -379,10 +382,10 @@ function CheckoutFormInner({
         throw new Error(updateResult.error?.message || 'Failed to update payment intent');
       }
 
-      console.log('✅ PaymentIntent updated successfully:', updateResult.paymentIntent.id);
+      console.log('[SUCCESS] PaymentIntent updated successfully:', updateResult.paymentIntent.id);
       
       // Step 2: Confirm payment directly using Stripe Elements API
-      console.log('🔄 Confirming payment with Stripe...');
+      console.log('[REDIRECT] Confirming payment with Stripe...');
       setIsProcessing(true);
       
       if (!stripe || !elements) {
@@ -393,7 +396,7 @@ function CheckoutFormInner({
       const { error: submitError } = await elements.submit();
       
       if (submitError) {
-        console.error('❌ Elements submission failed:', submitError);
+        console.error('[ERROR] Elements submission failed:', submitError);
         setPaymentError(submitError.message || 'Payment submission failed');
         return;
       }
@@ -462,10 +465,10 @@ function CheckoutFormInner({
           city: data.shippingCity,
           state: '', // Required by Stripe when billingDetails: 'never'
           postal_code: data.shippingPostalCode,
-          country: getCountryCode(data.shippingCountry),
+          country: getCountryCode(data.shippingCountry || ''),
         },
       } : {
-        name: data.billingFullName || data.shippingFullName,
+        name: data.billingFullName || data.shippingFullName || '',
         email: data.email,
         phone: '', // Required by Stripe when billingDetails: 'never'
         address: {
@@ -473,11 +476,11 @@ function CheckoutFormInner({
           city: data.billingCity || data.shippingCity,
           state: '', // Required by Stripe when billingDetails: 'never'
           postal_code: data.billingPostalCode || data.shippingPostalCode,
-          country: getCountryCode(data.billingCountry || data.shippingCountry),
+          country: getCountryCode(data.billingCountry || data.shippingCountry || ''),
         },
       };
 
-      console.log('🔧 Syncing billing address with Stripe:', billingAddress);
+      console.log('[CONFIG] Syncing billing address with Stripe:', billingAddress);
 
       const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
         elements,
@@ -494,7 +497,7 @@ function CheckoutFormInner({
       // Enhanced debugging for 3DS flow analysis
       const isE2ETest = typeof window !== 'undefined' && window.navigator.webdriver;
       if (isE2ETest) {
-        console.log('🔧 Payment confirmation result analysis:', {
+        console.log('[CONFIG] Payment confirmation result analysis:', {
           hasError: !!confirmError,
           errorType: confirmError?.type,
           errorCode: confirmError?.code,
@@ -506,7 +509,7 @@ function CheckoutFormInner({
         });
 
         // Comprehensive 3DS Flow Debugging
-        console.log('🔧 Complete payment confirmation analysis:', {
+        console.log('[CONFIG] Complete payment confirmation analysis:', {
           hasPaymentIntent: !!(paymentIntent),
           hasConfirmError: !!confirmError,
           stripeError: confirmError
@@ -515,10 +518,10 @@ function CheckoutFormInner({
         // Universal Intensive Monitoring - Production Grade Solution
         // Monitor ALL payment scenarios, not just requires_action
         const paymentStatus = (paymentIntent as any)?.status;
-        console.log(`🔧 Universal monitoring check: status=${paymentStatus}, shouldActivate=${paymentStatus === 'requires_action' || paymentStatus === 'succeeded' || paymentStatus === 'processing'}`);
+        console.log(`[CONFIG] Universal monitoring check: status=${paymentStatus}, shouldActivate=${paymentStatus === 'requires_action' || paymentStatus === 'succeeded' || paymentStatus === 'processing'}`);
         
         if (paymentStatus === 'requires_action' || paymentStatus === 'succeeded' || paymentStatus === 'processing') {
-          console.log(`🔧 Payment flow detected (${paymentStatus}) - activating universal intensive monitoring immediately`);
+          console.log(`[CONFIG] Payment flow detected (${paymentStatus}) - activating universal intensive monitoring immediately`);
           
           let universalRedirected = false;
           let universalMonitoringActive = true;
@@ -528,7 +531,7 @@ function CheckoutFormInner({
             universalRedirected = true;
             universalMonitoringActive = false;
             
-            console.log(`🔧 Payment completion detected (${reason}) - redirecting immediately`);
+            console.log(`[CONFIG] Payment completion detected (${reason}) - redirecting immediately`);
             
             // Use the same successful redirect strategy as global monitoring
             router.push(return_url);
@@ -563,11 +566,11 @@ function CheckoutFormInner({
               
               // Log progress for debugging
               if (universalPollCount % 10 === 0) { // Log every 5 seconds
-                console.log(`🔧 Universal monitoring: ${universalPollCount}/${maxUniversalPolls} - Status: ${latestPI.paymentIntent?.status}`);
+                console.log(`[CONFIG] Universal monitoring: ${universalPollCount}/${maxUniversalPolls} - Status: ${latestPI.paymentIntent?.status}`);
               }
               
             } catch (error) {
-              console.warn('⚠️ Universal monitoring check failed:', error);
+              console.warn('[WARN] Universal monitoring check failed:', error);
             }
             
             // Continue intensive monitoring
@@ -583,14 +586,14 @@ function CheckoutFormInner({
           setTimeout(() => {
             universalMonitoringActive = false;
             if (!universalRedirected) {
-              console.warn('⚠️ Universal intensive monitoring timeout - no completion detected');
+              console.warn('[WARN] Universal intensive monitoring timeout - no completion detected');
             }
           }, 90000);
         } else {
-          console.log(`🔧 Universal monitoring not activated for status: ${paymentStatus}`);
+          console.log(`[CONFIG] Universal monitoring not activated for status: ${paymentStatus}`);
           
           // Failsafe monitoring for ANY status - catches edge cases
-          console.log('🔧 Activating failsafe monitoring for unknown/edge case status');
+          console.log('[CONFIG] Activating failsafe monitoring for unknown/edge case status');
           
           let failsafeRedirected = false;
           let failsafeMonitoringActive = true;
@@ -600,7 +603,7 @@ function CheckoutFormInner({
             failsafeRedirected = true;
             failsafeMonitoringActive = false;
             
-            console.log(`🔧 Failsafe payment completion detected (${reason}) - redirecting immediately`);
+            console.log(`[CONFIG] Failsafe payment completion detected (${reason}) - redirecting immediately`);
             
             // Use the same successful redirect strategy
             router.push(return_url);
@@ -635,11 +638,11 @@ function CheckoutFormInner({
               
               // Log progress for debugging
               if (failsafePollCount % 10 === 0) { // Log every 10 seconds
-                console.log(`🔧 Failsafe monitoring: ${failsafePollCount}/${maxFailsafePolls} - Status: ${latestPI.paymentIntent?.status}`);
+                console.log(`[CONFIG] Failsafe monitoring: ${failsafePollCount}/${maxFailsafePolls} - Status: ${latestPI.paymentIntent?.status}`);
               }
               
             } catch (error) {
-              console.warn('⚠️ Failsafe monitoring check failed:', error);
+              console.warn('[WARN] Failsafe monitoring check failed:', error);
             }
             
             // Continue failsafe monitoring
@@ -655,14 +658,14 @@ function CheckoutFormInner({
           setTimeout(() => {
             failsafeMonitoringActive = false;
             if (!failsafeRedirected) {
-              console.warn('⚠️ Failsafe monitoring timeout - no completion detected');
+              console.warn('[WARN] Failsafe monitoring timeout - no completion detected');
             }
           }, 60000);
         }
 
-        // 🚀 PRODUCTION-GRADE 3DS SOLUTION: Multi-Trigger Monitoring
+        // [LAUNCH] PRODUCTION-GRADE 3DS SOLUTION: Multi-Trigger Monitoring
         // This ensures 3DS completion is detected regardless of initial payment status
-        console.log('🔧 Initializing production-grade 3DS multi-trigger monitoring');
+        console.log('[CONFIG] Initializing production-grade 3DS multi-trigger monitoring');
         
         let multiTriggerRedirected = false;
         let multiTriggerActive = true;
@@ -672,11 +675,11 @@ function CheckoutFormInner({
           multiTriggerRedirected = true;
           multiTriggerActive = false;
           
-          console.log(`🔧 3DS completion detected via ${trigger} - redirecting immediately`);
+          console.log(`[CONFIG] 3DS completion detected via ${trigger} - redirecting immediately`);
           
           // Enhanced 3DS redirect strategy for test environment reliability
           if (trigger.includes('3DS') || trigger.includes('immediate')) {
-            console.log('🔧 Using aggressive 3DS redirect strategy - immediate synchronous redirect');
+            console.log('[CONFIG] Using aggressive 3DS redirect strategy - immediate synchronous redirect');
             // Immediate, synchronous navigation for 3DS scenarios
             window.location.replace(return_url);
             window.location.href = return_url;
@@ -705,7 +708,7 @@ function CheckoutFormInner({
             // Log 3DS iframe activity
             const threeDSFrame = document.querySelector('iframe[name*="__privateStripeFrame"]');
             if (threeDSFrame) {
-              console.log('🔧 3DS iframe detected - monitoring for completion');
+              console.log('[CONFIG] 3DS iframe detected - monitoring for completion');
             }
           });
         });
@@ -748,11 +751,11 @@ function CheckoutFormInner({
             
             // Enhanced logging for 3DS status tracking
             if (threeDSPollCount % 10 === 0) { // Log every 10 seconds
-              console.log(`🔧 3DS Multi-trigger monitoring: ${threeDSPollCount}/${maxThreeDSPolls} - Status: ${currentStatus}`);
+              console.log(`[CONFIG] 3DS Multi-trigger monitoring: ${threeDSPollCount}/${maxThreeDSPolls} - Status: ${currentStatus}`);
             }
             
           } catch (error) {
-            console.warn('⚠️ 3DS multi-trigger polling error:', error);
+            console.warn('[WARN] 3DS multi-trigger polling error:', error);
           }
           
           // Continue aggressive monitoring
@@ -764,14 +767,14 @@ function CheckoutFormInner({
         // Trigger 3: Time-Based Activation (Start monitoring after 3 seconds)
         setTimeout(() => {
           if (!multiTriggerRedirected && multiTriggerActive) {
-            console.log('🔧 3DS Time-based monitoring activation');
+            console.log('[CONFIG] 3DS Time-based monitoring activation');
             intensiveThreeDSPolling();
           }
         }, 3000);
 
         // Trigger 5: Enhanced 3DS Completion Detection
         const enhanced3DSCompletion = async () => {
-          console.log('🔧 Enhanced 3DS completion detection started');
+          console.log('[CONFIG] Enhanced 3DS completion detection started');
           
           let completionCheckCount = 0;
           const maxCompletionChecks = 180; // 3 minutes at 1s intervals
@@ -789,18 +792,18 @@ function CheckoutFormInner({
               const currentStatus = currentPI.paymentIntent?.status;
               
               // Enhanced logging for 3DS completion tracking
-              console.log(`🔧 Enhanced 3DS check ${completionCheckCount}: status=${currentStatus}, url=${window.location.pathname}`);
+              console.log(`[CONFIG] Enhanced 3DS check ${completionCheckCount}: status=${currentStatus}, url=${window.location.pathname}`);
               
               // Check for completion indicators
               if (currentStatus === 'succeeded') {
-                console.log('🔧 3DS completion detected - payment intent succeeded');
+                console.log('[CONFIG] 3DS completion detected - payment intent succeeded');
                 performMultiTriggerRedirect('enhanced 3DS completion');
                 return;
               }
               
               // Check if we're already on success page
               if (window.location.pathname.includes('/checkout/success')) {
-                console.log('🔧 3DS completion detected - already on success page');
+                console.log('[CONFIG] 3DS completion detected - already on success page');
                 performMultiTriggerRedirect('URL-based 3DS completion');
                 return;
               }
@@ -808,7 +811,7 @@ function CheckoutFormInner({
               // Check for 3DS modal disappearance (completion indicator)
               const threeDSFrame = document.querySelector('iframe[name*="__privateStripeFrame"]');
               if (!threeDSFrame && completionCheckCount > 10) {
-                console.log('🔧 3DS modal disappeared - checking payment status');
+                console.log('[CONFIG] 3DS modal disappeared - checking payment status');
                 // Wait a moment then check status again
                 setTimeout(async () => {
                   const finalPI = await stripe.retrievePaymentIntent(clientSecret!);
@@ -819,7 +822,7 @@ function CheckoutFormInner({
               }
               
             } catch (error) {
-              console.warn('⚠️ Enhanced 3DS completion check failed:', error);
+              console.warn('[WARN] Enhanced 3DS completion check failed:', error);
             }
             
             // Continue checking
@@ -836,7 +839,7 @@ function CheckoutFormInner({
         enhanced3DSCompletion();
 
         // IMMEDIATE 3DS CHECK - Start checking right away
-        console.log('🔧 Starting immediate 3DS completion monitoring');
+        console.log('[CONFIG] Starting immediate 3DS completion monitoring');
         let immediateCheckCount = 0;
         const immediateCheck = async () => {
           if (multiTriggerRedirected || immediateCheckCount > 60) return;
@@ -847,10 +850,10 @@ function CheckoutFormInner({
             const status = currentPI.paymentIntent?.status;
             const url = window.location.pathname;
             
-            console.log(`🔧 Immediate 3DS check ${immediateCheckCount}: status=${status}, url=${url}`);
+            console.log(`[CONFIG] Immediate 3DS check ${immediateCheckCount}: status=${status}, url=${url}`);
             
             if (status === 'succeeded' || url.includes('/checkout/success')) {
-              console.log('🔧 IMMEDIATE 3DS SUCCESS DETECTED');
+              console.log('[CONFIG] IMMEDIATE 3DS SUCCESS DETECTED');
               performMultiTriggerRedirect('immediate 3DS success');
               return;
             }
@@ -860,7 +863,7 @@ function CheckoutFormInner({
               setTimeout(immediateCheck, 500);
             }
           } catch (error) {
-            console.warn('⚠️ Immediate 3DS check failed:', error);
+            console.warn('[WARN] Immediate 3DS check failed:', error);
             if (!multiTriggerRedirected) {
               setTimeout(immediateCheck, 500);
             }
@@ -877,7 +880,7 @@ function CheckoutFormInner({
             const threeDSFrame = document.querySelector('iframe[name*="__privateStripeFrame"]');
             if (!threeDSFrame && !multiTriggerRedirected) {
               // Modal disappeared, likely completed - start intensive monitoring
-              console.log('🔧 3DS modal disappeared - starting completion monitoring');
+              console.log('[CONFIG] 3DS modal disappeared - starting completion monitoring');
               setTimeout(intensiveThreeDSPolling, 500);
             }
           };
@@ -903,20 +906,20 @@ function CheckoutFormInner({
           multiTriggerActive = false;
           threeDSObserver.disconnect();
           if (!multiTriggerRedirected) {
-            console.warn('⚠️ 3DS multi-trigger monitoring timeout - manual check required');
+            console.warn('[WARN] 3DS multi-trigger monitoring timeout - manual check required');
           }
         }, 120000);
       }
 
       if (confirmError) {
-        console.error('❌ Payment confirmation failed:', confirmError);
+        console.error('[ERROR] Payment confirmation failed:', confirmError);
         setPaymentError(confirmError.message || 'Payment confirmation failed');
         return;
       }
 
       // Set up 3DS monitoring for ALL E2E tests, regardless of initial status
       if (isE2ETest) {
-        console.log('🔧 Setting up comprehensive 3DS/payment monitoring for E2E test');
+        console.log('[CONFIG] Setting up comprehensive 3DS/payment monitoring for E2E test');
         
         let redirected = false;
         let monitoringActive = true;
@@ -927,7 +930,7 @@ function CheckoutFormInner({
           redirected = true;
           monitoringActive = false;
           
-          console.log(`🔧 Payment success detected (${reason}) - redirecting immediately to success page`);
+          console.log(`[CONFIG] Payment success detected (${reason}) - redirecting immediately to success page`);
           
           // Immediate redirect with both strategies
           router.push(return_url);
@@ -946,7 +949,7 @@ function CheckoutFormInner({
               return;
             }
           } catch (error) {
-            console.warn('⚠️ Payment status check failed:', error);
+            console.warn('[WARN] Payment status check failed:', error);
           }
           
           // Continue monitoring if still active
@@ -962,14 +965,14 @@ function CheckoutFormInner({
         setTimeout(() => {
           monitoringActive = false;
           if (!redirected) {
-            console.warn('⚠️ Payment monitoring timeout - no redirect detected');
+            console.warn('[WARN] Payment monitoring timeout - no redirect detected');
           }
         }, 30000);
       }
 
       if ((paymentIntent as any)?.status === 'succeeded') {
-        console.log('✅ Payment completed successfully');
-        console.log('🔄 Redirecting to success page:', return_url);
+        console.log('[SUCCESS] Payment completed successfully');
+        console.log('[REDIRECT] Redirecting to success page:', return_url);
         
         // Production-grade redirect handling for all environments
         const isE2ETest = typeof window !== 'undefined' && (
@@ -979,7 +982,7 @@ function CheckoutFormInner({
         
         if (isE2ETest) {
           // For E2E tests: Use both router.push and window.location for maximum reliability
-          console.log('🔧 E2E Test redirect - using both router.push and window.location');
+          console.log('[CONFIG] E2E Test redirect - using both router.push and window.location');
           router.push(return_url);
           window.location.href = return_url;
         } else {
@@ -989,7 +992,7 @@ function CheckoutFormInner({
           }, 500);
         }
       } else if ((paymentIntent as any)?.status === 'requires_action') {
-        console.log('🔄 Payment requires additional authentication');
+        console.log('[REDIRECT] Payment requires additional authentication');
         // Stripe will handle 3DS automatically with the return_url
         // But for E2E tests, we may need additional handling
         
@@ -1000,7 +1003,7 @@ function CheckoutFormInner({
         );
         
         if (isE2ETest) {
-          console.log('🔧 3DS flow detected in E2E test environment - setting up aggressive redirect monitoring');
+          console.log('[CONFIG] 3DS flow detected in E2E test environment - setting up aggressive redirect monitoring');
           
           let redirected = false;
           let monitoringActive = true;
@@ -1011,7 +1014,7 @@ function CheckoutFormInner({
             redirected = true;
             monitoringActive = false;
             
-            console.log(`🔧 3DS success detected (${reason}) - redirecting immediately to success page`);
+            console.log(`[CONFIG] 3DS success detected (${reason}) - redirecting immediately to success page`);
             
             // Immediate redirect with both strategies
             router.push(return_url);
@@ -1024,7 +1027,7 @@ function CheckoutFormInner({
             originalConsoleLog.apply(console, args);
             const message = args.join(' ');
             if (message.includes('Payment completed successfully') || 
-                message.includes('✅ Payment completed')) {
+                message.includes('[SUCCESS] Payment completed')) {
               performRedirect('console success message');
             }
           };
@@ -1059,7 +1062,7 @@ function CheckoutFormInner({
                 return;
               }
             } catch (error) {
-              console.warn('⚠️ Payment status check failed:', error);
+              console.warn('[WARN] Payment status check failed:', error);
             }
             
             // Schedule next poll
@@ -1076,7 +1079,7 @@ function CheckoutFormInner({
             console.log = originalConsoleLog;
             monitoringActive = false;
             if (!redirected) {
-              console.warn('⚠️ 3DS monitoring timeout - no redirect detected');
+              console.warn('[WARN] 3DS monitoring timeout - no redirect detected');
             }
           }, 25000);
         }
@@ -1084,7 +1087,7 @@ function CheckoutFormInner({
         throw new Error(`Payment not completed. Status: ${(paymentIntent as any)?.status}`);
       }
     } catch (error) {
-      console.error('❌ Unexpected error during payment processing:', error);
+      console.error('[ERROR] Unexpected error during payment processing:', error);
       setPaymentError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsProcessing(false);
@@ -1233,7 +1236,7 @@ function CheckoutFormInner({
             {/* Payment Security Note */}
             {canSubmit && !isProcessing && (
               <p className="text-xs text-gray-500 mt-2 text-center">
-                🔒 Your payment information is encrypted and secure
+                [LOCK] Your payment information is encrypted and secure
               </p>
             )}
           </div>
@@ -1270,7 +1273,7 @@ export default function CheckoutForm() {
   // Initialize payment intent on page load
   useEffect(() => {
     if (!cartItems || cartItems.length === 0) {
-      console.log('🔄 Skipping payment initialization - empty cart');
+      console.log('[REDIRECT] Skipping payment initialization - empty cart');
       return;
     }
 
@@ -1279,7 +1282,7 @@ export default function CheckoutForm() {
       setInitializationError(null);
       
       try {
-        console.log('🔄 Initializing payment intent for checkout page...');
+        console.log('[REDIRECT] Initializing payment intent for checkout page...');
         
         const response = await fetch('/api/payments/initialize-intent', {
           method: 'POST',
@@ -1296,7 +1299,7 @@ export default function CheckoutForm() {
         const data = await response.json();
         
         if (data.success) {
-          console.log('✅ Payment intent initialized:', data.paymentIntent.id);
+          console.log('[SUCCESS] Payment intent initialized:', data.paymentIntent.id);
           setClientSecret(data.paymentIntent.clientSecret);
           
           // Store PaymentIntent info for single-intent lifecycle
@@ -1306,11 +1309,11 @@ export default function CheckoutForm() {
             orderNumber: data.orderDraft.id, // Will be updated with actual order number later
           });
         } else {
-          console.error('❌ Payment intent initialization failed:', data.error);
+          console.error('[ERROR] Payment intent initialization failed:', data.error);
           setInitializationError(data.error.message || 'Failed to initialize payment');
         }
       } catch (error) {
-        console.error('❌ Payment intent initialization error:', error);
+        console.error('[ERROR] Payment intent initialization error:', error);
         setInitializationError('Failed to initialize payment system');
       } finally {
         setIsInitializingPayment(false);
@@ -1330,7 +1333,7 @@ export default function CheckoutForm() {
     const isE2ETest = typeof window !== 'undefined' && window.navigator.webdriver;
     
     if (isE2ETest) {
-      console.log(`🔧 CheckoutForm (Outer) - Payment validation change: ${isComplete ? 'COMPLETE' : 'INCOMPLETE'}`);
+      console.log(`[CONFIG] CheckoutForm (Outer) - Payment validation change: ${isComplete ? 'COMPLETE' : 'INCOMPLETE'}`);
     }
     
     setIsPaymentComplete(isComplete);

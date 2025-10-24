@@ -20,4 +20,4 @@ requireStripeKeys(testConfig);
 // Apply configuration to process.env for backward compatibility
 setupTestEnvironmentVariables(testConfig);
 
-console.log('✅ Contract test environment loaded with explicit loader (integration mode)');
+console.log('[SUCCESS] Contract test environment loaded with explicit loader (integration mode)');

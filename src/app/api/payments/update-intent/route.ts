@@ -15,6 +15,7 @@ import { validateRequestHeaders, validateClientIP } from '@/lib/security/validat
 import { checkMultiTierRateLimit, getRateLimitHeaders } from '@/lib/security/rateLimit';
 import { getOrderById, updateStoredOrderStatus, updateStoredOrderPayment } from '@/lib/orderStore';
 import { monitoring } from '@/utils/monitoring';
+import { OrderStatus } from '@/types/order';
 
 // ====== REQUEST INTERFACES ======
 
@@ -131,12 +132,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<UpdatePay
   const stopApiTimer = monitoring.startTimer('api.initialize_intent'); // Reuse existing histogram
   
   try {
-    console.log(`🔄 Payment intent update started - Request ID: ${requestId}`);
+    console.log(`[REDIRECT] Payment intent update started - Request ID: ${requestId}`);
     
     // Basic security validation
     const rateLimitResult = checkMultiTierRateLimit(request);
     if (!rateLimitResult.allowed) {
-      console.warn(`⚠️ Rate limit exceeded - Request ID: ${requestId}`);
+      console.warn(`[WARN] Rate limit exceeded - Request ID: ${requestId}`);
       return NextResponse.json({
         success: false,
         error: {
@@ -154,7 +155,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<UpdatePay
     // Header validation
     const headerValidation = validateRequestHeaders(request);
     if (!headerValidation.isValid) {
-      console.error('❌ Header validation failed:', headerValidation.threats);
+      console.error('[ERROR] Header validation failed:', headerValidation.threats);
       return NextResponse.json({
         success: false,
         error: {
@@ -171,7 +172,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<UpdatePay
     if (clientIp) {
       const ipValidation = validateClientIP(clientIp);
       if (!ipValidation.isValid) {
-        console.warn('⚠️ Invalid IP format:', clientIp);
+        console.warn('[WARN] Invalid IP format:', clientIp);
       }
     }
     
@@ -180,7 +181,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<UpdatePay
     try {
       requestData = await request.json();
     } catch (parseError) {
-      console.error(`❌ JSON parsing failed - Request ID: ${requestId}:`, parseError);
+      console.error(`[ERROR] JSON parsing failed - Request ID: ${requestId}:`, parseError);
       return NextResponse.json({
         success: false,
         error: {
@@ -195,7 +196,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<UpdatePay
     // Validate request data
     const validation = validateUpdateRequest(requestData);
     if (!validation.isValid) {
-      console.warn(`⚠️ Validation failed - Request ID: ${requestId}:`, validation.errors);
+      console.warn(`[WARN] Validation failed - Request ID: ${requestId}:`, validation.errors);
       return NextResponse.json({
         success: false,
         error: {
@@ -211,7 +212,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<UpdatePay
     // Retrieve the order draft
     const orderDraft = getOrderById(requestData.orderDraftId);
     if (!orderDraft) {
-      console.error(`❌ Order draft not found - Request ID: ${requestId}, Order ID: ${requestData.orderDraftId}`);
+      console.error(`[ERROR] Order draft not found - Request ID: ${requestId}, Order ID: ${requestData.orderDraftId}`);
       return NextResponse.json({
         success: false,
         error: {
@@ -227,7 +228,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<UpdatePay
     const totalInRON = orderDraft.totals.subtotal;
     const amountValidation = validatePaymentAmount(totalInRON);
     if (!amountValidation.isValid) {
-      console.warn(`⚠️ Amount validation failed - Request ID: ${requestId}:`, amountValidation.error);
+      console.warn(`[WARN] Amount validation failed - Request ID: ${requestId}:`, amountValidation.error);
       return NextResponse.json({
         success: false,
         error: {
@@ -245,10 +246,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<UpdatePay
     const taxInBani = Math.round(subtotalInBani * taxRate);
     const totalWithTaxInBani = subtotalInBani + taxInBani;
     
-    console.log(`✅ Amount validated - Request ID: ${requestId}: ${totalInRON} RON (${totalWithTaxInBani} bani with tax)`);
+    console.log(`[SUCCESS] Amount validated - Request ID: ${requestId}: ${totalInRON} RON (${totalWithTaxInBani} bani with tax)`);
     
     // Update the PaymentIntent with finalized information
-    console.log(`🔄 Updating Stripe PaymentIntent - PI ID: ${requestData.paymentIntentId}, Request ID: ${requestId}`);
+    console.log(`[REDIRECT] Updating Stripe PaymentIntent - PI ID: ${requestData.paymentIntentId}, Request ID: ${requestId}`);
     
     const updateParams = {
       amount: totalWithTaxInBani,
@@ -279,12 +280,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<UpdatePay
     const updatedPaymentIntent = await stripeOperations.updatePaymentIntent(requestData.paymentIntentId, updateParams);
     stopStripeTimer();
     
-    console.log(`✅ PaymentIntent updated - PI ID: ${updatedPaymentIntent.id}, Amount: ${updatedPaymentIntent.amount}, Request ID: ${requestId}`);
+    console.log(`[SUCCESS] PaymentIntent updated - PI ID: ${updatedPaymentIntent.id}, Amount: ${updatedPaymentIntent.amount}, Request ID: ${requestId}`);
     
     // Update order status to reflect finalization
     const statusUpdateResult = await updateStoredOrderStatus(
       orderDraft.id,
-      'processing',
+      OrderStatus.PROCESSING,
       'Order finalized with customer and shipping information',
       'api_update_intent',
       {
@@ -313,15 +314,15 @@ export async function POST(request: NextRequest): Promise<NextResponse<UpdatePay
     );
     
     if (!statusUpdateResult.success) {
-      console.warn(`⚠️ Failed to update order status - Order ID: ${orderDraft.id}, Error: ${statusUpdateResult.error}`);
+      console.warn(`[WARN] Failed to update order status - Order ID: ${orderDraft.id}, Error: ${statusUpdateResult.error}`);
     }
     
     if (!paymentUpdateResult.success) {
-      console.warn(`⚠️ Failed to update order payment - Order ID: ${orderDraft.id}, Error: ${paymentUpdateResult.error}`);
+      console.warn(`[WARN] Failed to update order payment - Order ID: ${orderDraft.id}, Error: ${paymentUpdateResult.error}`);
     }
     
     if (statusUpdateResult.success && paymentUpdateResult.success) {
-      console.log(`✅ Order draft updated - Order ID: ${orderDraft.id}, Status: processing`);
+      console.log(`[SUCCESS] Order draft updated - Order ID: ${orderDraft.id}, Status: processing`);
     }
     
     // Return successful response
@@ -340,7 +341,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<UpdatePay
       },
     };
     
-    console.log(`✅ Payment intent update completed - Request ID: ${requestId}`);
+    console.log(`[SUCCESS] Payment intent update completed - Request ID: ${requestId}`);
     
     return NextResponse.json(response, {
       status: 200,
@@ -353,7 +354,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<UpdatePay
     });
     
   } catch (error) {
-    console.error(`❌ Payment intent update failed - Request ID: ${requestId}:`, error);
+    console.error(`[ERROR] Payment intent update failed - Request ID: ${requestId}:`, error);
     
     // Handle Stripe-specific errors
     if (error && typeof error === 'object' && 'type' in error) {

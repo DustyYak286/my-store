@@ -82,7 +82,7 @@ export function recordOrderStatusChange(
   monitoring.recordWebhookOrderUpdated(orderId, toStatus, 0);
   
   if (process.env.NODE_ENV === 'development') {
-    console.log(`📋 Audit: Order ${orderId} status changed ${fromStatus} → ${toStatus} by ${triggeredBy}`);
+    console.log(`[INFO] Audit: Order ${orderId} status changed ${fromStatus} -> ${toStatus} by ${triggeredBy}`);
   }
 }
 
@@ -122,7 +122,7 @@ export function recordPaymentStatusChange(
   addAuditEntry(orderId, entry);
   
   if (process.env.NODE_ENV === 'development') {
-    console.log(`📋 Audit: Order ${orderId} payment ${fromPaymentStatus} → ${toPaymentStatus} (${amount} ${currency})`);
+    console.log(`[INFO] Audit: Order ${orderId} payment ${fromPaymentStatus} -> ${toPaymentStatus} (${amount} ${currency})`);
   }
 }
 
@@ -156,7 +156,7 @@ export function recordWebhookProcessing(
   addAuditEntry(orderId, entry);
   
   if (process.env.NODE_ENV === 'development') {
-    console.log(`📋 Audit: Webhook ${webhookEventType} for order ${orderId} - ${success ? 'SUCCESS' : 'FAILED'}`);
+    console.log(`[INFO] Audit: Webhook ${webhookEventType} for order ${orderId} - ${success ? 'SUCCESS' : 'FAILED'}`);
   }
 }
 
@@ -190,7 +190,7 @@ export function recordOrderCreation(
   addAuditEntry(orderId, entry);
   
   if (process.env.NODE_ENV === 'development') {
-    console.log(`📋 Audit: Order created ${orderNumber} (${orderId}) - ${amount} ${currency}`);
+    console.log(`[INFO] Audit: Order created ${orderNumber} (${orderId}) - ${amount} ${currency}`);
   }
 }
 

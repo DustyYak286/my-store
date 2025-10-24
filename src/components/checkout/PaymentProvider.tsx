@@ -82,7 +82,7 @@ export default function PaymentProvider({ children, clientSecret }: PaymentProvi
   
   // If no clientSecret is provided, we'll wait for initialization
   if (!hasValidClientSecret) {
-    console.log('🔄 PaymentProvider: No clientSecret provided, waiting for initialization...');
+    console.log('[REDIRECT] PaymentProvider: No clientSecret provided, waiting for initialization...');
     return (
       <PaymentErrorBoundary
         onError={(error, errorInfo) => {
@@ -117,7 +117,7 @@ export default function PaymentProvider({ children, clientSecret }: PaymentProvi
 
   // Debug logging for development
   if (process.env.NODE_ENV === 'development') {
-    console.log('🔧 PaymentProvider initialized:', {
+    console.log('[CONFIG] PaymentProvider initialized:', {
       hasValidClientSecret: true, // Always true at this point
       clientSecretPreview: clientSecret ? `${clientSecret.substring(0, 15)}...` : 'undefined',
       elementsMode: 'Payment Intent mode', // Always payment mode now

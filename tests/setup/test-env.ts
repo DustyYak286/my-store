@@ -36,4 +36,4 @@ export function teardownTestEnvironment() {
 
 // Auto-setup when imported
 setupTestEnvironment();
-console.log('✅ Legacy test environment wrapper loaded (using explicit loader)');
+console.log('[SUCCESS] Legacy test environment wrapper loaded (using explicit loader)');

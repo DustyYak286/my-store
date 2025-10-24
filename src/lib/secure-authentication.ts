@@ -153,7 +153,7 @@ export class SecureAuthenticationManager {
     this.abortController = new AbortController();
 
     try {
-      console.log(`🔐 Starting 3D Secure authentication (attempt ${retryAttempt})`);
+      console.log(`[SECURITY] Starting 3D Secure authentication (attempt ${retryAttempt})`);
       
       // Setup timeouts and progress tracking
       this.setupTimeouts();
@@ -180,7 +180,7 @@ export class SecureAuthenticationManager {
       const authenticationTime = Date.now() - startTime;
 
       if (result.success && result.paymentIntent) {
-        console.log(`✅ 3D Secure authentication completed in ${authenticationTime}ms`);
+        console.log(`[SUCCESS] 3D Secure authentication completed in ${authenticationTime}ms`);
         
         this.state.isAuthenticating = false;
         this.options.onAuthenticationProgress(100, AUTHENTICATION_MESSAGES.SUCCESS);
@@ -204,7 +204,7 @@ export class SecureAuthenticationManager {
         
         // Determine if we should retry
         if (authError.isRetryable && retryAttempt < this.options.maxRetries) {
-          console.log(`⏳ Retrying 3D Secure authentication in ${RETRY_DELAY}ms (attempt ${retryAttempt + 1})`);
+          console.log(`[WAITING] Retrying 3D Secure authentication in ${RETRY_DELAY}ms (attempt ${retryAttempt + 1})`);
           
           if (this.options.enableUserGuidance) {
             this.options.onUserGuidance(USER_GUIDANCE.RETRY_AVAILABLE, 'info');
@@ -286,7 +286,7 @@ export class SecureAuthenticationManager {
       });
 
       if (error) {
-        console.warn('⚠️ 3D Secure authentication failed:', {
+        console.warn('[WARN] 3D Secure authentication failed:', {
           type: error.type,
           code: error.code,
           message: error.message,
@@ -309,7 +309,7 @@ export class SecureAuthenticationManager {
           };
         } else if (paymentIntent.status === 'requires_action') {
           // Still requires action - this might be a multi-step authentication
-          console.log('🔄 Multi-step authentication detected, continuing...');
+          console.log('[REDIRECT] Multi-step authentication detected, continuing...');
           
           this.options.onAuthenticationProgress(60, AUTHENTICATION_MESSAGES.CHALLENGE);
           
@@ -335,7 +335,7 @@ export class SecureAuthenticationManager {
         },
       };
     } catch (error) {
-      console.error('❌ Authentication error:', error);
+      console.error('[ERROR] Authentication error:', error);
       return {
         success: false,
         error,
@@ -365,7 +365,7 @@ export class SecureAuthenticationManager {
     // Main timeout
     this.timeoutRef = setTimeout(() => {
       if (this.state.isAuthenticating) {
-        console.warn('⏰ 3D Secure authentication timeout reached');
+        console.warn('[TIMEOUT] 3D Secure authentication timeout reached');
         
         const timeElapsed = this.state.authenticationStartTime 
           ? Date.now() - this.state.authenticationStartTime 
@@ -565,7 +565,7 @@ export class SecureAuthenticationManager {
    * Cancel ongoing authentication
    */
   cancel(): void {
-    console.log('🚫 3D Secure authentication cancelled by user');
+    console.log('[BLOCKED] 3D Secure authentication cancelled by user');
     
     this.state.isAuthenticating = false;
     this.state.lastAuthError = {

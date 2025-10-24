@@ -8,14 +8,14 @@ import { loadEnvConfig } from '@next/env';
 import { loadTestEnv, requireStripeKeys } from '@/../tests/config/test-environment';
 
 export default async function globalSetup() {
-  console.log('🔧 Setting up integration test environment with centralized config...');
+  console.log('[CONFIG] Setting up integration test environment with centralized config...');
 
   // Load and validate centralized environment configuration with integration mode
   let config;
   try {
     config = loadTestEnv({ mode: 'integration' });
     requireStripeKeys(config);
-    console.log('✅ Centralized environment configuration validated');
+    console.log('[SUCCESS] Centralized environment configuration validated');
   } catch (error) {
     throw new Error(`Global setup failed: ${error.message}`);
   }
@@ -49,9 +49,9 @@ export default async function globalSetup() {
 
     // Simple API call to verify connectivity
     await stripe.paymentMethods.list({ limit: 1 });
-    console.log('✅ Stripe API connectivity verified');
+    console.log('[SUCCESS] Stripe API connectivity verified');
   } catch (error) {
-    console.error('❌ Failed to connect to Stripe API:', error);
+    console.error('[ERROR] Failed to connect to Stripe API:', error);
     throw new Error(
       'Could not establish connection to Stripe API. ' +
       'Please verify your test keys and internet connection.'
@@ -60,7 +60,7 @@ export default async function globalSetup() {
     // CRITICAL: Destroy the test agent immediately after verification
     if (testAgent) {
       testAgent.destroy();
-      console.log('✅ Stripe connectivity test agent destroyed');
+      console.log('[SUCCESS] Stripe connectivity test agent destroyed');
     }
   }
 
@@ -68,5 +68,5 @@ export default async function globalSetup() {
   process.env.NODE_ENV = 'test';
   process.env.TEST_INTEGRATION = 'true';
 
-  console.log('✅ Integration test environment setup complete');
+  console.log('[SUCCESS] Integration test environment setup complete');
 }

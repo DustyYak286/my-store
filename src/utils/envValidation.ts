@@ -423,40 +423,40 @@ export const logValidationResults = (results: EnvValidationResults, strict: bool
   const modeLabel = strict ? ' (STRICT MODE)' : '';
   
   if (results.valid) {
-    console.log(`✅ Environment validation passed${modeLabel}`);
+    console.log(`[SUCCESS] Environment validation passed${modeLabel}`);
     if (results.warnings.length > 0) {
-      console.log(`⚠️  ${results.warnings.length} warnings found:`);
+      console.log(`[WARN]  ${results.warnings.length} warnings found:`);
       results.warnings.forEach(({ key, warning }) => {
         console.log(`   ${key}: ${warning}`);
       });
       
       if (strict) {
-        console.log('💡 In strict mode, set all variables explicitly to avoid warnings');
+        console.log('[TIP] In strict mode, set all variables explicitly to avoid warnings');
       }
     }
   } else {
-    console.error(`❌ Environment validation failed${modeLabel}`);
+    console.error(`[ERROR] Environment validation failed${modeLabel}`);
     console.error(`Found ${results.errors.length} errors:`);
     
     results.errors.forEach(({ key, error, description }) => {
-      console.error(`\n❌ ${key}`);
+      console.error(`\n[ERROR] ${key}`);
       console.error(`   Error: ${error}`);
       console.error(`   Expected: ${description}`);
     });
 
     if (results.warnings.length > 0) {
-      console.log(`\n⚠️  ${results.warnings.length} warnings:`);
+      console.log(`\n[WARN]  ${results.warnings.length} warnings:`);
       results.warnings.forEach(({ key, warning }) => {
         console.log(`   ${key}: ${warning}`);
       });
     }
     
     if (strict) {
-      console.error('\n🚫 STRICT MODE: All environment variables must be explicitly set');
+      console.error('\n[BLOCKED] STRICT MODE: All environment variables must be explicitly set');
     }
   }
 
-  console.log(`\n📊 Summary: ${results.summary.passed}/${results.summary.totalChecked} passed`);
+  console.log(`\n[STATS] Summary: ${results.summary.passed}/${results.summary.totalChecked} passed`);
 };
 
 /**

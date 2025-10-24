@@ -1,10 +1,10 @@
 "use client";
 import React, { createContext, useContext, useMemo, ReactNode } from "react";
 import Toast from "@/components/Toast";
-import { useToast } from "@/hooks/useToast";
+import { useToast, ToastOptions } from "@/hooks/useToast";
 
 interface ToastContextType {
-  showToast: (message: string, type?: "success" | "error" | "info") => void;
+  showToast: (message: string, options?: ToastOptions) => string;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);

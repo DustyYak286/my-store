@@ -77,7 +77,7 @@ class FileOrderStorage implements OrderStorageAdapter {
     } else {
       // Browser environment - use unique identifier
       this.filePath = 'browser-fallback';
-      console.log('🔧 FileOrderStorage: Using in-memory fallback for browser environment');
+      console.log('[CONFIG] FileOrderStorage: Using in-memory fallback for browser environment');
     }
   }
 
@@ -131,7 +131,7 @@ class FileOrderStorage implements OrderStorageAdapter {
           const stored = window.localStorage.getItem('e2e-orders');
           if (stored) {
             const parsed = JSON.parse(stored);
-            console.log(`🔧 Browser: Retrieved ${Object.keys(parsed).length} orders from localStorage`);
+            console.log(`[CONFIG] Browser: Retrieved ${Object.keys(parsed).length} orders from localStorage`);
             return parsed;
           }
         } catch (error) {
@@ -176,7 +176,7 @@ class FileOrderStorage implements OrderStorageAdapter {
       if (typeof window !== 'undefined') {
         try {
           window.localStorage.setItem('e2e-orders', JSON.stringify(orders));
-          console.log(`🔧 Browser: Stored ${Object.keys(orders).length} orders to localStorage`);
+          console.log(`[CONFIG] Browser: Stored ${Object.keys(orders).length} orders to localStorage`);
         } catch (error) {
           console.warn('Failed to write to localStorage:', error);
         }
@@ -307,7 +307,7 @@ const storage: OrderStorageAdapter = isE2EEnvironment()
   ? new FileOrderStorage()
   : new InMemoryOrderStorage();
 
-console.log(`🔧 Order storage initialized: ${isE2EEnvironment() ? 'File-based (E2E)' : 'In-memory (Development)'}`);
+console.log(`[CONFIG] Order storage initialized: ${isE2EEnvironment() ? 'File-based (E2E)' : 'In-memory (Development)'}`);
 
 // Concurrency control for status updates
 const statusUpdateLocks = new Map<string, Promise<any>>();
@@ -335,9 +335,9 @@ export const storeOrder = (order: Order): void => {
       }
     );
     
-    console.log(`✅ Order stored successfully: ${order.id} (${order.orderNumber})`);
+    console.log(`[SUCCESS] Order stored successfully: ${order.id} (${order.orderNumber})`);
   } catch (error) {
-    console.error(`❌ Failed to store order ${order.id}:`, error);
+    console.error(`[ERROR] Failed to store order ${order.id}:`, error);
     throw new Error(`Order storage failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
@@ -349,13 +349,13 @@ export const getOrderById = (orderId: string): Order | null => {
   try {
     const order = storage.get(orderId);
     if (order) {
-      console.log(`✅ Order retrieved: ${orderId} (${order.orderNumber}) - Status: ${order.status}`);
+      console.log(`[SUCCESS] Order retrieved: ${orderId} (${order.orderNumber}) - Status: ${order.status}`);
     } else {
-      console.log(`🔍 Order not found: ${orderId} - Total orders: ${storage.values().length}`);
+      console.log(`[DEBUG] Order not found: ${orderId} - Total orders: ${storage.values().length}`);
     }
     return order;
   } catch (error) {
-    console.error(`❌ Failed to retrieve order ${orderId}:`, error);
+    console.error(`[ERROR] Failed to retrieve order ${orderId}:`, error);
     return null;
   }
 };
@@ -368,14 +368,14 @@ export const getOrderByNumber = (orderNumber: string): Order | null => {
     const allOrders = storage.values();
     for (const order of allOrders) {
       if (order.orderNumber === orderNumber) {
-        console.log(`✅ Order found by number: ${orderNumber} (${order.id}) - Status: ${order.status}`);
+        console.log(`[SUCCESS] Order found by number: ${orderNumber} (${order.id}) - Status: ${order.status}`);
         return order;
       }
     }
-    console.log(`🔍 Order not found by number: ${orderNumber} - Total orders: ${allOrders.length}`);
+    console.log(`[DEBUG] Order not found by number: ${orderNumber} - Total orders: ${allOrders.length}`);
     return null;
   } catch (error) {
-    console.error(`❌ Failed to search order by number ${orderNumber}:`, error);
+    console.error(`[ERROR] Failed to search order by number ${orderNumber}:`, error);
     return null;
   }
 };
@@ -394,12 +394,12 @@ export const updateStoredOrderStatus = async (
   // Prevent concurrent status updates for the same order
   const existingLock = statusUpdateLocks.get(orderId);
   if (existingLock) {
-    console.log(`🔒 Waiting for existing status update lock: ${orderId}`);
+    console.log(`[LOCK] Waiting for existing status update lock: ${orderId}`);
     try {
       await existingLock;
     } catch (error) {
       // Continue with our update even if previous one failed
-      console.warn(`⚠️ Previous status update failed for ${orderId}, continuing`);
+      console.warn(`[WARN] Previous status update failed for ${orderId}, continuing`);
     }
   }
 
@@ -416,7 +416,7 @@ export const updateStoredOrderStatus = async (
 
       // Validate status transition to prevent race conditions
       if (order.status === newStatus) {
-        console.warn(`⚠️ Attempted duplicate status update for ${orderId}: ${order.status} -> ${newStatus}`);
+        console.warn(`[WARN] Attempted duplicate status update for ${orderId}: ${order.status} -> ${newStatus}`);
         return {
           success: true,
           order,
@@ -458,9 +458,9 @@ export const updateStoredOrderStatus = async (
       // Update storage with enhanced error handling
       try {
         storage.set(orderId, result.order);
-        console.log(`✅ Order status updated: ${orderId} ${order.status} -> ${newStatus}`);
+        console.log(`[SUCCESS] Order status updated: ${orderId} ${order.status} -> ${newStatus}`);
       } catch (storageError) {
-        console.error(`❌ Failed to persist status update for ${orderId}:`, storageError);
+        console.error(`[ERROR] Failed to persist status update for ${orderId}:`, storageError);
         return {
           success: false,
           error: `Storage update failed: ${storageError instanceof Error ? storageError.message : 'Unknown error'}`,
@@ -473,7 +473,7 @@ export const updateStoredOrderStatus = async (
         order: result.order,
       };
     } catch (error) {
-      console.error(`❌ Status update failed for ${orderId}:`, error);
+      console.error(`[ERROR] Status update failed for ${orderId}:`, error);
       return {
         success: false,
         error: `Status update failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -537,9 +537,9 @@ export const updateStoredOrderPayment = (
       // Update storage with enhanced error handling
       try {
         storage.set(orderId, result.order);
-        console.log(`✅ Order payment updated: ${orderId} - Status: ${result.order.paymentStatus}`);
+        console.log(`[SUCCESS] Order payment updated: ${orderId} - Status: ${result.order.paymentStatus}`);
       } catch (storageError) {
-        console.error(`❌ Failed to persist payment update for ${orderId}:`, storageError);
+        console.error(`[ERROR] Failed to persist payment update for ${orderId}:`, storageError);
         return {
           success: false,
           error: `Payment storage update failed: ${storageError instanceof Error ? storageError.message : 'Unknown error'}`,
@@ -549,7 +549,7 @@ export const updateStoredOrderPayment = (
 
     return result;
   } catch (error) {
-    console.error(`❌ Payment update failed for ${orderId}:`, error);
+    console.error(`[ERROR] Payment update failed for ${orderId}:`, error);
     return {
       success: false,
       error: `Payment update failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -564,7 +564,7 @@ export const getAllOrders = (): Order[] => {
   try {
     return storage.values();
   } catch (error) {
-    console.error('❌ Failed to get all orders:', error);
+    console.error('[ERROR] Failed to get all orders:', error);
     return [];
   }
 };
@@ -576,7 +576,7 @@ export const getOrdersByStatus = (status: OrderStatus): Order[] => {
   try {
     return storage.values().filter(order => order.status === status);
   } catch (error) {
-    console.error(`❌ Failed to get orders by status ${status}:`, error);
+    console.error(`[ERROR] Failed to get orders by status ${status}:`, error);
     return [];
   }
 };
@@ -588,7 +588,7 @@ export const getOrdersByPaymentStatus = (paymentStatus: PaymentStatus): Order[] 
   try {
     return storage.values().filter(order => order.paymentStatus === paymentStatus);
   } catch (error) {
-    console.error(`❌ Failed to get orders by payment status ${paymentStatus}:`, error);
+    console.error(`[ERROR] Failed to get orders by payment status ${paymentStatus}:`, error);
     return [];
   }
 };
@@ -599,9 +599,9 @@ export const getOrdersByPaymentStatus = (paymentStatus: PaymentStatus): Order[] 
 export const clearAllOrders = (): void => {
   try {
     storage.clear();
-    console.log('✅ All orders cleared from storage');
+    console.log('[SUCCESS] All orders cleared from storage');
   } catch (error) {
-    console.error('❌ Failed to clear orders:', error);
+    console.error('[ERROR] Failed to clear orders:', error);
   }
 };
 
@@ -625,7 +625,7 @@ export const getOrderStats = () => {
 
     return stats;
   } catch (error) {
-    console.error('❌ Failed to get order stats:', error);
+    console.error('[ERROR] Failed to get order stats:', error);
     return {
       total: 0,
       byStatus: {} as Record<OrderStatus, number>,

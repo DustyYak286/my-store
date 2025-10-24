@@ -139,7 +139,7 @@ export default function CardPaymentForm({
       const isE2ETest = typeof window !== 'undefined' && window.navigator.webdriver;
       
       if (isDevelopment || isE2ETest) {
-        console.log('🔧 CardPaymentForm validation error:', event.error);
+        console.log('[CONFIG] CardPaymentForm validation error:', event.error);
       }
     } else {
       setError(null);
@@ -155,7 +155,7 @@ export default function CardPaymentForm({
         // In E2E environments, handle validation more aggressively
         const handleE2EValidation = () => {
           if (isComplete) {
-            console.log('🔧 E2E Test - Stripe validation complete, setting isPaymentComplete to true');
+            console.log('[CONFIG] E2E Test - Stripe validation complete, setting isPaymentComplete to true');
             onValidationChange?.(true);
             return;
           }
@@ -171,14 +171,14 @@ export default function CardPaymentForm({
             const hasNoErrors = !event.error;
             
             if (hasRequiredFields && hasNoErrors) {
-              console.log('🔧 E2E Test - Fields appear complete, applying validation override');
+              console.log('[CONFIG] E2E Test - Fields appear complete, applying validation override');
               onValidationChange?.(true);
               return;
             }
           }
           
           // Fallback to Stripe's determination
-          console.log('🔧 E2E Test - Using Stripe validation result:', isComplete);
+          console.log('[CONFIG] E2E Test - Using Stripe validation result:', isComplete);
           onValidationChange?.(isComplete);
         };
         
@@ -196,7 +196,7 @@ export default function CardPaymentForm({
       const debugE2E = typeof window !== 'undefined' && window.navigator.webdriver;
       
       if (isDevelopment || debugE2E) {
-        console.log('🔧 CardPaymentForm deterministic validation:', {
+        console.log('[CONFIG] CardPaymentForm deterministic validation:', {
           complete: isComplete,
           hasError: !!event.error,
           eventValue: event.value

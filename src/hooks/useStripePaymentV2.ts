@@ -168,7 +168,7 @@ export function useStripePaymentV2(options: UseStripePaymentV2Options = {}) {
           if (paymentIntentId) successParams.set('payment_intent', paymentIntentId);
           
           const successUrl = `/checkout/success?${successParams.toString()}`;
-          console.log('🎯 Redirecting to success page:', successUrl);
+          console.log('[TRACK] Redirecting to success page:', successUrl);
           
           router.push(successUrl);
           redirectTimeoutRef.current = null;

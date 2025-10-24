@@ -426,16 +426,16 @@ export const logConfigurationStatus = (): void => {
   const summary = getConfigurationSummary();
   const validation = validateStripeConfiguration();
   
-  console.log('🔧 Stripe Configuration:', summary);
+  console.log('[CONFIG] Stripe Configuration:', summary);
   
   if (validation.isValid) {
-    console.log('✅ Stripe configuration is valid');
+    console.log('[SUCCESS] Stripe configuration is valid');
   } else {
-    console.error('❌ Stripe configuration errors:', validation.errors);
+    console.error('[ERROR] Stripe configuration errors:', validation.errors);
   }
   
   if (validation.warnings.length > 0) {
-    console.warn('⚠️  Stripe configuration warnings:', validation.warnings);
+    console.warn('[WARN]  Stripe configuration warnings:', validation.warnings);
   }
 };
 

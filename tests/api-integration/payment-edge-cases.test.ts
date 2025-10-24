@@ -19,15 +19,15 @@ import type { CartItem } from '@/types/cart';
 import crypto from 'crypto';
 
 beforeAll(() => {
-  console.log('🔍 Starting Production-Grade Edge Cases Testing');
-  console.log('🐛 These tests cover unusual scenarios and boundary conditions');
+  console.log('[DEBUG] Starting Production-Grade Edge Cases Testing');
+  console.log('[BUG] These tests cover unusual scenarios and boundary conditions');
 });
 
 afterAll(async () => {
   // Dynamic import to avoid module-level loading issues
   const { cleanupTestPaymentIntents } = await import('../utils/stripe-test-helpers');
   await cleanupTestPaymentIntents('edge_case_test');
-  console.log('✅ Edge cases testing cleanup completed');
+  console.log('[SUCCESS] Edge cases testing cleanup completed');
 });
 
 describe('Production Edge Cases Testing', () => {
@@ -85,7 +85,7 @@ describe('Production Edge Cases Testing', () => {
         expect(responseData.error).toBeDefined();
       }
 
-      console.log(`✅ Malformed JSON handling test passed - tested ${malformedRequests.length} cases`);
+      console.log(`[SUCCESS] Malformed JSON handling test passed - tested ${malformedRequests.length} cases`);
     });
 
     it('should handle missing required fields', async () => {
@@ -130,7 +130,7 @@ describe('Production Edge Cases Testing', () => {
         expect(responseData.error.type).toBe('validation_error');
       }
 
-      console.log(`✅ Missing required fields handling test passed - tested ${incompleteRequests.length} cases`);
+      console.log(`[SUCCESS] Missing required fields handling test passed - tested ${incompleteRequests.length} cases`);
     });
 
     it('should handle extremely large payloads', async () => {
@@ -187,11 +187,11 @@ describe('Production Edge Cases Testing', () => {
         const responseData = await response.json();
         expect(responseData.success).toBe(true);
         expect(responseData.paymentIntent).toBeDefined();
-        console.log(`✅ Large payload handled successfully`);
+        console.log(`[SUCCESS] Large payload handled successfully`);
       } else {
         // Should gracefully reject with appropriate error
         expect([413, 400, 422]).toContain(response.status); // Payload too large or validation error
-        console.log(`✅ Large payload rejected gracefully with status ${response.status}`);
+        console.log(`[SUCCESS] Large payload rejected gracefully with status ${response.status}`);
       }
     }, 30000);
   });
@@ -258,15 +258,15 @@ describe('Production Edge Cases Testing', () => {
         if (test.shouldSucceed) {
           expect(response.status).toBe(200);
           expect(responseData.success).toBe(true);
-          console.log(`✅ ${test.description}: Accepted as expected`);
+          console.log(`[SUCCESS] ${test.description}: Accepted as expected`);
         } else {
           expect([400, 422, 429, 500]).toContain(response.status); // Include 429 for rate limiting
           expect(responseData.success).toBe(false);
-          console.log(`✅ ${test.description}: Rejected as expected`);
+          console.log(`[SUCCESS] ${test.description}: Rejected as expected`);
         }
       }
 
-      console.log(`✅ Boundary value testing completed`);
+      console.log(`[SUCCESS] Boundary value testing completed`);
     });
 
     it('should handle maximum field lengths', async () => {
@@ -375,10 +375,10 @@ describe('Production Edge Cases Testing', () => {
           expect([400, 422, 500]).toContain(response.status);
         }
 
-        console.log(`✅ ${test.field} max length test: ${test.shouldSucceed ? 'accepted' : 'rejected'} as expected`);
+        console.log(`[SUCCESS] ${test.field} max length test: ${test.shouldSucceed ? 'accepted' : 'rejected'} as expected`);
       }
 
-      console.log(`✅ Maximum field length testing completed`);
+      console.log(`[SUCCESS] Maximum field length testing completed`);
     });
   });
 
@@ -395,7 +395,7 @@ describe('Production Edge Cases Testing', () => {
         items: [
           {
             id: 1,
-            name: '🎵 Produs Test cu Emoji și Unicode: Ñoël 测试产品 العربية 🛒💳',
+            name: '🎵 Produs Test cu Emoji și Unicode: Ñoël 测试产品 العربية 🛒[PAYMENT]',
             price: TEST_AMOUNTS.STANDARD,
             quantity: 1,
             image: '/test-product-unicode.jpg'
@@ -439,7 +439,7 @@ describe('Production Edge Cases Testing', () => {
       const storedOrder = getOrderUnicode(responseData.order.id);
       expect(storedOrder?.customerInfo.firstName).toBe('Ñoël');
 
-      console.log(`✅ Unicode character handling test passed`);
+      console.log(`[SUCCESS] Unicode character handling test passed`);
     });
 
     it('should handle SQL injection attempts in all fields', async () => {
@@ -507,7 +507,7 @@ describe('Production Edge Cases Testing', () => {
         }
       }
 
-      console.log(`✅ SQL injection prevention test passed - tested ${sqlInjectionAttempts.length} cases`);
+      console.log(`[SUCCESS] SQL injection prevention test passed - tested ${sqlInjectionAttempts.length} cases`);
     });
   });
 
@@ -558,10 +558,10 @@ describe('Production Edge Cases Testing', () => {
         
         // Should reject malformed signatures
         expect([400, 401, 403]).toContain(response.status);
-        console.log(`✅ Malformed signature ${index} rejected with status ${response.status}`);
+        console.log(`[SUCCESS] Malformed signature ${index} rejected with status ${response.status}`);
       }
 
-      console.log(`✅ Malformed webhook signature handling test passed`);
+      console.log(`[SUCCESS] Malformed webhook signature handling test passed`);
     });
 
     it('should handle webhook events for non-existent orders', async () => {
@@ -600,10 +600,10 @@ describe('Production Edge Cases Testing', () => {
         // Could either succeed (idempotent) or fail gracefully
         expect(response.status).toBeLessThan(500); // No server errors
         
-        console.log(`✅ Non-existent order ${orderId} handled gracefully with status ${response.status}`);
+        console.log(`[SUCCESS] Non-existent order ${orderId} handled gracefully with status ${response.status}`);
       }
 
-      console.log(`✅ Non-existent order webhook handling test passed`);
+      console.log(`[SUCCESS] Non-existent order webhook handling test passed`);
     });
 
     it('should handle duplicate webhook events', async () => {
@@ -706,7 +706,7 @@ describe('Production Edge Cases Testing', () => {
       const finalOrder = getOrderDupe(order.id);
       expect(finalOrder?.status).toBe('paid');
 
-      console.log(`✅ Duplicate webhook handling test passed`);
+      console.log(`[SUCCESS] Duplicate webhook handling test passed`);
     });
   });
 
@@ -759,11 +759,11 @@ describe('Production Edge Cases Testing', () => {
         
         // If we get here, the request completed within timeout
         expect(response.status).toBeLessThan(500);
-        console.log(`✅ Slow request handled within timeout with status ${response.status}`);
+        console.log(`[SUCCESS] Slow request handled within timeout with status ${response.status}`);
       } catch (error) {
         // If we timeout, that's also acceptable behavior
         if ((error as Error).message === 'Request timeout') {
-          console.log(`✅ Request properly timed out after 30 seconds`);
+          console.log(`[SUCCESS] Request properly timed out after 30 seconds`);
         } else {
           throw error;
         }
@@ -826,7 +826,7 @@ describe('Production Edge Cases Testing', () => {
       const rateLimitedCount = statuses.filter(s => s === 429).length;
       const errorCount = statuses.filter(s => s >= 400 && s !== 429).length;
 
-      console.log(`🔥 Rapid sequential requests results:`);
+      console.log(`[FIRE] Rapid sequential requests results:`);
       console.log(`   Successful: ${successCount}`);
       console.log(`   Rate Limited: ${rateLimitedCount}`);
       console.log(`   Errors: ${errorCount}`);
@@ -835,7 +835,7 @@ describe('Production Edge Cases Testing', () => {
       expect(errorCount).toBe(0); // No server errors
       expect(successCount + rateLimitedCount).toBe(responses.length);
 
-      console.log(`✅ Rapid sequential requests test passed`);
+      console.log(`[SUCCESS] Rapid sequential requests test passed`);
     });
   });
 
@@ -876,10 +876,10 @@ describe('Production Edge Cases Testing', () => {
         
         // Should handle corrupted payloads gracefully
         expect(response.status).toBeLessThan(500); // No server errors
-        console.log(`✅ Corrupted payload ${index} handled with status ${response.status}`);
+        console.log(`[SUCCESS] Corrupted payload ${index} handled with status ${response.status}`);
       }
 
-      console.log(`✅ Corrupted webhook payload handling test passed`);
+      console.log(`[SUCCESS] Corrupted webhook payload handling test passed`);
     });
 
     it('should maintain data consistency during partial failures', async () => {
@@ -954,7 +954,7 @@ describe('Production Edge Cases Testing', () => {
       expect(finalOrder?.id).toBe(order.id);
       expect(finalOrder?.total).toBe(initialOrder?.total);
 
-      console.log(`✅ Partial failure data consistency test passed`);
+      console.log(`[SUCCESS] Partial failure data consistency test passed`);
     });
   });
 });

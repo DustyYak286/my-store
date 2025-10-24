@@ -21,11 +21,11 @@ export function setupConditionalStripeMock() {
     
     // Mock the stripe module
     jest.doMock('stripe', () => mockStripe);
-    console.log('🧪 Using mocked Stripe for unit tests');
+    console.log('[TEST] Using mocked Stripe for unit tests');
   } else {
     // Ensure no mocking for E2E/integration tests
     jest.dontMock('stripe');
-    console.log('🔗 Using real Stripe test API for E2E/integration tests');
+    console.log('[LINK] Using real Stripe test API for E2E/integration tests');
   }
 }
 

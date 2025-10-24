@@ -31,7 +31,7 @@ export const getStripe = (): Stripe => {
       stripeInstance = new Stripe(stripeConfig.secretKey, options);
       
       // Log successful initialization (safe for production)
-      console.log(`✅ Stripe initialized (${stripeConfig.environmentLabel})`);
+      console.log(`[SUCCESS] Stripe initialized (${stripeConfig.environmentLabel})`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       throw createStripeConfigError(
@@ -60,14 +60,14 @@ export const createPaymentIntent = async (
   const stripe = getStripe();
   
   try {
-    console.log(`🔄 Creating payment intent for ${params.amount} ${params.currency}`, {
+    console.log(`[REDIRECT] Creating payment intent for ${params.amount} ${params.currency}`, {
       orderId: params.metadata?.orderId,
       environment: stripeConfig.environmentLabel,
     });
     
     const paymentIntent = await stripe.paymentIntents.create(params, options);
     
-    console.log(`✅ Payment intent created: ${paymentIntent.id}`, {
+    console.log(`[SUCCESS] Payment intent created: ${paymentIntent.id}`, {
       status: paymentIntent.status,
       amount: paymentIntent.amount,
       orderId: params.metadata?.orderId,
@@ -77,7 +77,7 @@ export const createPaymentIntent = async (
   } catch (error) {
     const stripeError = error as Stripe.errors.StripeError;
     
-    console.error('❌ Payment intent creation failed:', {
+    console.error('[ERROR] Payment intent creation failed:', {
       error: stripeError.message,
       type: stripeError.type,
       code: stripeError.code,
@@ -116,11 +116,11 @@ export const retrievePaymentIntent = async (
     const stripeError = error as Stripe.errors.StripeError;
     
     if (stripeError.code === 'resource_missing') {
-      console.warn(`⚠️ Payment intent not found: ${paymentIntentId}`);
+      console.warn(`[WARN] Payment intent not found: ${paymentIntentId}`);
       return null;
     }
     
-    console.error('❌ Failed to retrieve payment intent:', {
+    console.error('[ERROR] Failed to retrieve payment intent:', {
       paymentIntentId,
       error: stripeError.message,
       code: stripeError.code,
@@ -156,7 +156,7 @@ export const constructWebhookEvent = (
       stripeConfig.webhooks.tolerance
     );
     
-    console.log(`✅ Webhook event verified: ${event.type}`, {
+    console.log(`[SUCCESS] Webhook event verified: ${event.type}`, {
       eventId: event.id,
       created: event.created,
       livemode: event.livemode,
@@ -166,7 +166,7 @@ export const constructWebhookEvent = (
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
-    console.error('❌ Webhook verification failed:', {
+    console.error('[ERROR] Webhook verification failed:', {
       error: errorMessage,
       hasSignature: !!signature,
       payloadLength: typeof payload === 'string' ? payload.length : payload.length,
@@ -209,7 +209,7 @@ export const processPaymentIntentWebhook = (
     currency: paymentIntent.currency,
   };
   
-  console.log(`🔄 Processing payment intent webhook:`, {
+  console.log(`[REDIRECT] Processing payment intent webhook:`, {
     eventType: event.type,
     paymentIntentId: result.paymentIntentId,
     orderId: result.orderId,
@@ -331,9 +331,9 @@ export const handleStripeError = (
   
   // Log based on severity
   if (errorInfo.logLevel === 'error') {
-    console.error('❌ Stripe error:', logData);
+    console.error('[ERROR] Stripe error:', logData);
   } else {
-    console.warn('⚠️ Stripe warning:', logData);
+    console.warn('[WARN] Stripe warning:', logData);
   }
   
   return {

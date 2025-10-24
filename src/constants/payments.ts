@@ -425,7 +425,7 @@ export const isErrorRetryable = (
   const retryableSubCategories = ['processing_error', 'card_validation'];
   
   return retryableCategories.includes(category) || 
-         (subCategory && retryableSubCategories.includes(subCategory));
+         (!!subCategory && retryableSubCategories.includes(subCategory));
 };
 
 /**

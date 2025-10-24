@@ -121,15 +121,15 @@ export function loadTestEnv(opts?: {
   
   if (!result.success) {
     if (isIntegration) {
-      console.warn('⚠️ Test environment validation warnings (integration mode)');
+      console.warn('[WARN] Test environment validation warnings (integration mode)');
       console.warn(result.error.format());
       // Best-effort typed object: coercion + defaults still applied
       // This ensures consistent return type while being lenient for integration tests
       return testEnvironmentSchema.parse(process.env);
     } else {
       // Fail fast for unit tests - this is the valuable signal
-      throw new Error(`❌ Test environment validation failed:\n${result.error.message}\n\n` +
-                     `💡 To fix this:\n` +
+      throw new Error(`[ERROR] Test environment validation failed:\n${result.error.message}\n\n` +
+                     `[TIP] To fix this:\n` +
                      `  1. Copy .env.example to .env.test\n` +
                      `  2. Fill in the required values\n` +
                      `  3. Ensure Stripe keys are TEST keys (sk_test_*, pk_test_*, whsec_*)`);
@@ -151,9 +151,9 @@ export function requireStripeKeys(config: TestEnv): void {
 
   if (missing.length > 0) {
     throw new Error(
-      `❌ Missing required Stripe keys for contract/integration tests:\n` +
+      `[ERROR] Missing required Stripe keys for contract/integration tests:\n` +
       `  ${missing.join(', ')}\n\n` +
-      `💡 Add these to your .env.test file with TEST values only.`
+      `[TIP] Add these to your .env.test file with TEST values only.`
     );
   }
 }
@@ -260,4 +260,4 @@ export const testConfig = new Proxy({}, {
   }
 }) as TestEnv;
 
-console.log('✅ Test environment configuration loader ready');
+console.log('[SUCCESS] Test environment configuration loader ready');

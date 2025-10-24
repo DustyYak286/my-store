@@ -9,13 +9,14 @@ import Stripe from 'stripe';
 import { OrderStatus, PaymentStatus } from '@/types/order';
 import { updateStoredOrderStatus, updateStoredOrderPayment, getOrderById } from '@/lib/orderStore';
 import { monitoring } from '@/utils/monitoring';
-import { 
-  recordOrderStatusChange, 
-  recordPaymentStatusChange, 
-  recordWebhookProcessing 
+import {
+  recordOrderStatusChange,
+  recordPaymentStatusChange,
+  recordWebhookProcessing
 } from '@/utils/auditTrail';
 import { clearCartAfterPayment, CartClearingResult } from '@/utils/cartClearing';
 import { sendOrderConfirmedEmail, sendPaymentFailedEmail, EmailResult } from '@/utils/emailHelpers';
+import type { WebhookMetadata } from '@/utils/webhookMetadata';
 
 /**
  * Categorize payment failures for better analytics and insights
@@ -62,12 +63,6 @@ function categorizePaymentFailure(lastPaymentError: any): string {
   }
   
   return 'unknown';
-}
-
-interface WebhookMetadata {
-  orderId: string;
-  version: string;
-  source: string;
 }
 
 interface ProcessingResult {
@@ -212,7 +207,7 @@ async function processPaymentSucceeded(
           webhook: event.id
         });
         // Log but don't throw - allow idempotent processing to continue
-        console.warn(`⚠️ Duplicate webhook amount mismatch for paid order ${orderId}: expected ${currentAmount}, got ${paymentIntent.amount}`);
+        console.warn(`[WARN] Duplicate webhook amount mismatch for paid order ${orderId}: expected ${currentAmount}, got ${paymentIntent.amount}`);
       }
     }
 
@@ -333,7 +328,7 @@ async function processPaymentSucceeded(
       }
     } else {
       // Order already PAID - idempotent webhook processing
-      console.log(`ℹ️ Order ${orderId} already in PAID status - idempotent webhook processing`);
+      console.log(`[INFO] Order ${orderId} already in PAID status - idempotent webhook processing`);
     }
 
     // Clear the cart after successful payment
@@ -350,9 +345,9 @@ async function processPaymentSucceeded(
         );
         
         if (cartClearingResult.success) {
-          console.log(`✅ Cart cleared successfully for order ${orderId} using ${cartClearingResult.method}`);
+          console.log(`[SUCCESS] Cart cleared successfully for order ${orderId} using ${cartClearingResult.method}`);
         } else {
-          console.warn(`⚠️ Cart clearing failed for order ${orderId}: ${cartClearingResult.error}`);
+          console.warn(`[WARN] Cart clearing failed for order ${orderId}: ${cartClearingResult.error}`);
           // Don't fail the entire webhook processing for cart clearing failures
           monitoring.recordWebhookError('cart_clearing_failed', { 
             orderId, 
@@ -362,7 +357,7 @@ async function processPaymentSucceeded(
         }
       } catch (cartError) {
         const cartErrorMessage = cartError instanceof Error ? cartError.message : 'Unknown cart clearing error';
-        console.error(`❌ Cart clearing exception for order ${orderId}:`, cartErrorMessage);
+        console.error(`[ERROR] Cart clearing exception for order ${orderId}:`, cartErrorMessage);
         
         cartClearingResult = {
           success: false,
@@ -383,9 +378,9 @@ async function processPaymentSucceeded(
         emailResult = await sendOrderConfirmedEmail(updatedOrder);
         
         if (emailResult.success) {
-          console.log(`📧 Order confirmation email sent for order ${orderId} (${emailResult.emailId})`);
+          console.log(`[EMAIL] Order confirmation email sent for order ${orderId} (${emailResult.emailId})`);
         } else {
-          console.warn(`⚠️ Order confirmation email failed for order ${orderId}: ${emailResult.error}`);
+          console.warn(`[WARN] Order confirmation email failed for order ${orderId}: ${emailResult.error}`);
           // Don't fail the entire webhook processing for email failures
           monitoring.recordWebhookError('email_notification_failed', {
             orderId,
@@ -395,7 +390,7 @@ async function processPaymentSucceeded(
         }
       } catch (emailError) {
         const emailErrorMessage = emailError instanceof Error ? emailError.message : 'Unknown email error';
-        console.error(`❌ Email notification exception for order ${orderId}:`, emailErrorMessage);
+        console.error(`[ERROR] Email notification exception for order ${orderId}:`, emailErrorMessage);
         
         emailResult = {
           success: false,
@@ -633,9 +628,9 @@ async function processPaymentFailed(
         emailResult = await sendPaymentFailedEmail(orderForEmail, failureReason);
         
         if (emailResult.success) {
-          console.log(`📧 Payment failed email sent for order ${orderId} (${emailResult.emailId})`);
+          console.log(`[EMAIL] Payment failed email sent for order ${orderId} (${emailResult.emailId})`);
         } else {
-          console.warn(`⚠️ Payment failed email failed for order ${orderId}: ${emailResult.error}`);
+          console.warn(`[WARN] Payment failed email failed for order ${orderId}: ${emailResult.error}`);
           monitoring.recordWebhookError('email_notification_failed', {
             orderId,
             error: emailResult.error,
@@ -644,7 +639,7 @@ async function processPaymentFailed(
         }
       } catch (emailError) {
         const emailErrorMessage = emailError instanceof Error ? emailError.message : 'Unknown email error';
-        console.error(`❌ Email notification exception for order ${orderId}:`, emailErrorMessage);
+        console.error(`[ERROR] Email notification exception for order ${orderId}:`, emailErrorMessage);
         
         emailResult = {
           success: false,

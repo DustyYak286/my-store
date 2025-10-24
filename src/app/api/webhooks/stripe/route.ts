@@ -29,7 +29,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const stopWebhookTimer = monitoring.startTimer('api.webhook');
   const signature = request.headers.get('stripe-signature') || '';
   const requestId = `wh_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-  const sourceIp = request.ip || request.headers.get('x-forwarded-for') || 'unknown';
+  const sourceIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
   const userAgent = request.headers.get('user-agent') || 'unknown';
 
   // Start comprehensive logging
@@ -69,8 +69,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     try {
       const signatureParts = signature.split(',');
       for (const part of signatureParts) {
-        const [key, value] = part.split('=');
-        if (key === 't') {
+        const [key, value = ''] = part.split('=');
+        if (key === 't' && value) {
           extractedTimestamp = parseInt(value, 10);
           break;
         }
@@ -377,7 +377,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         eventId: event.id,
         processingId: requestId,
         orderId: metadata.orderId,
-        metadata: { version: metadata.version },
+        metadata: { webhookVersion: metadata.webhookVersion },
         tags: ['webhook', 'version', 'incompatible'],
       });
       
@@ -395,8 +395,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       orderId: metadata.orderId,
       metadata: {
         eventType: event.type,
-        version: metadata.version,
-        source: metadata.source,
+        webhookVersion: metadata.webhookVersion,
+        orderSource: metadata.orderSource,
       },
       tags: ['webhook', 'business-logic', 'started'],
     });
@@ -424,7 +424,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       webhookLogger.log(LogLevel.INFO, 'Order processing completed successfully', {
         eventId: event.id,
         processingId: requestId,
-        orderId: result.orderId,
+        ...(result.orderId ? { orderId: result.orderId } : {}),
         metadata: {
           action: result.action,
           cartClearing: result.cartClearing?.success,
@@ -496,7 +496,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           stack: error instanceof Error ? error.stack : undefined,
         },
         tags: ['webhook', 'error', 'security'],
-        error: error instanceof Error ? error : undefined,
+        ...(error instanceof Error ? { error } : {}),
       });
       
       return NextResponse.json({ 
@@ -523,7 +523,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           stack: error instanceof Error ? error.stack : undefined,
         },
         tags: ['webhook', 'error', 'validation'],
-        error: error instanceof Error ? error : undefined,
+        ...(error instanceof Error ? { error } : {}),
       });
       
       return NextResponse.json({ 
@@ -549,7 +549,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           stack: error instanceof Error ? error.stack : undefined,
         },
         tags: ['webhook', 'error', 'network'],
-        error: error instanceof Error ? error : undefined,
+        ...(error instanceof Error ? { error } : {}),
       });
       
       return NextResponse.json({ 
@@ -574,7 +574,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           stack: error instanceof Error ? error.stack : undefined,
         },
         tags: ['webhook', 'error', 'processing'],
-        error: error instanceof Error ? error : undefined,
+        ...(error instanceof Error ? { error } : {}),
       });
       
       return NextResponse.json({ 

@@ -128,7 +128,7 @@ export function generateCSP(nonce?: string): string {
     'form-action': ["'self'"],
     'object-src': ["'none'"],
     'media-src': ["'self'"],
-    'worker-src': ["'self'"],
+    'worker-src': ["'self'", 'blob:'],
     'manifest-src': ["'self'"],
   };
 
@@ -158,7 +158,7 @@ export function generateCSP(nonce?: string): string {
     
   // Debug logging in development
   if (isDevelopment) {
-    console.log('🔐 Generated CSP for checkout:', {
+    console.log('[SECURITY] Generated CSP for checkout:', {
       imgSrc: baseCSP['img-src'],
       scriptSrc: baseCSP['script-src'],
       connectSrc: baseCSP['connect-src'],
@@ -168,14 +168,14 @@ export function generateCSP(nonce?: string): string {
     
     // Verify data: and blob: are included
     if (!cspString.includes('data:')) {
-      console.error('❌ CSP ERROR: data: not included in img-src!');
+      console.error('[ERROR] CSP ERROR: data: not included in img-src!');
     }
     if (!cspString.includes('blob:')) {
-      console.error('❌ CSP ERROR: blob: not included in img-src!');
+      console.error('[ERROR] CSP ERROR: blob: not included in img-src!');
     }
     
     // Log the full CSP for debugging
-    console.log('📋 Full CSP string:', cspString);
+    console.log('[INFO] Full CSP string:', cspString);
   }
   
   return cspString;

@@ -127,7 +127,7 @@ describe('PaymentErrorBoundary', () => {
         );
 
         expect(mockForThisTest).toHaveBeenCalledWith(
-          '💳 PaymentErrorBoundary caught an error:',
+          '[PAYMENT] PaymentErrorBoundary caught an error:',
           expect.objectContaining({
             error: 'Custom test error',
             errorId: expect.stringMatching(/^pe_\d+_/),
@@ -376,7 +376,7 @@ describe('PaymentErrorBoundary', () => {
         </PaymentErrorBoundary>
       );
 
-      const goBackButton = screen.getByText('← Go Back');
+      const goBackButton = screen.getByText('<- Go Back');
       fireEvent.click(goBackButton);
 
       expect(mockBack).toHaveBeenCalled();
@@ -401,7 +401,7 @@ describe('PaymentErrorBoundary', () => {
         </PaymentErrorBoundary>
       );
 
-      const goBackButton = screen.getByText('← Go Back');
+      const goBackButton = screen.getByText('<- Go Back');
       fireEvent.click(goBackButton);
 
       expect(window.location.href).toBe('http://localhost/');
@@ -478,7 +478,7 @@ describe('PaymentErrorBoundary', () => {
         </PaymentErrorBoundary>
       );
 
-      expect(screen.queryByText('🔍 Technical Details (Development)')).not.toBeInTheDocument();
+      expect(screen.queryByText('[DEBUG] Technical Details (Development)')).not.toBeInTheDocument();
 
       Object.defineProperty(process.env, 'NODE_ENV', {
         value: originalEnv,

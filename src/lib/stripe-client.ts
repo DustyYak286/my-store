@@ -33,24 +33,24 @@ export const getStripe = async (): Promise<Stripe | null> => {
   if (!stripePromise) {
     // Validate publishable key before attempting to load Stripe
     if (!clientStripeConfig.publishableKey) {
-      console.error('❌ Cannot load Stripe: publishableKey is empty');
+      console.error('[ERROR] Cannot load Stripe: publishableKey is empty');
       console.error('Environment variable NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:', process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'UNDEFINED');
       return null;
     }
 
     if (!clientStripeConfig.publishableKey.startsWith('pk_')) {
-      console.error('❌ Cannot load Stripe: invalid publishableKey format');
+      console.error('[ERROR] Cannot load Stripe: invalid publishableKey format');
       console.error('Key:', clientStripeConfig.publishableKey.substring(0, 20) + '...');
       return null;
     }
 
-    console.log('🔄 Loading Stripe with publishable key:', clientStripeConfig.publishableKey.substring(0, 20) + '...');
+    console.log('[REDIRECT] Loading Stripe with publishable key:', clientStripeConfig.publishableKey.substring(0, 20) + '...');
     
     stripePromise = loadStripe(clientStripeConfig.publishableKey, {
       // apiVersion: clientStripeConfig.apiVersion, // Use default API version
       locale: clientStripeConfig.locale,
     }).catch(error => {
-      console.error('❌ Stripe loading failed:', error);
+      console.error('[ERROR] Stripe loading failed:', error);
       return null;
     });
   }
@@ -114,7 +114,7 @@ export const confirmPayment = async (
     if (error) {
       const categorizedError = categorizeClientStripeError(error);
       
-      console.warn('⚠️ Payment confirmation failed:', {
+      console.warn('[WARN] Payment confirmation failed:', {
         type: error.type,
         code: error.code,
         message: error.message,
@@ -134,7 +134,7 @@ export const confirmPayment = async (
     }
     
     if (paymentIntent && paymentIntent.status === 'succeeded') {
-      console.log('✅ Payment confirmed successfully:', {
+      console.log('[SUCCESS] Payment confirmed successfully:', {
         paymentIntentId: paymentIntent.id,
         status: paymentIntent.status,
         amount: paymentIntent.amount,
@@ -159,7 +159,7 @@ export const confirmPayment = async (
     };
     
   } catch (error) {
-    console.error('❌ Payment confirmation error:', error);
+    console.error('[ERROR] Payment confirmation error:', error);
     
     return {
       success: false,
@@ -217,7 +217,7 @@ export const handleNextAction = async (
     };
     
   } catch (error) {
-    console.error('❌ Next action handling error:', error);
+    console.error('[ERROR] Next action handling error:', error);
     
     return {
       success: false,

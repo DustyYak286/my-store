@@ -198,7 +198,7 @@ describe('Webhook Metadata Utilities', () => {
     it('should log webhook processing information', () => {
       logWebhookProcessing(validMetadata, 'payment_intent.succeeded', 'evt_test_123');
       
-      expect(consoleSpy).toHaveBeenCalledWith('🪝 Processing webhook: payment_intent.succeeded');
+      expect(consoleSpy).toHaveBeenCalledWith('[WEBHOOK] Processing webhook: payment_intent.succeeded');
       expect(consoleSpy).toHaveBeenCalledWith('   Event ID: evt_test_123');
       expect(consoleSpy).toHaveBeenCalledWith('   Order ID: order_test_123');
       expect(consoleSpy).toHaveBeenCalledWith('   Order Number: ORD-2024-001234');

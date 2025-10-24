@@ -16,7 +16,7 @@
 // Enable Stripe mocking for unit tests
 jest.mock('stripe');
 
-console.log('🧪 Unit Tests: Using mocked Stripe SDK');
+console.log('[TEST] Unit Tests: Using mocked Stripe SDK');
 
 // Import async utilities for proper cleanup
 import { flushAsync } from './async-utils';
@@ -41,11 +41,11 @@ beforeAll(() => {
   console.log = (...args) => {
     const message = args[0];
     if (typeof message === 'string' && (
-      message.includes('🔄 Payment intent creation') ||
-      message.includes('🔒 Checking rate limits') ||
-      message.includes('✅ Security validation passed') ||
+      message.includes('[REDIRECT] Payment intent creation') ||
+      message.includes('[LOCK] Checking rate limits') ||
+      message.includes('[SUCCESS] Security validation passed') ||
       message.includes('Payment methods initialized:') ||
-      message.includes('🔧 Creating payment request with amount:')
+      message.includes('[CONFIG] Creating payment request with amount:')
     )) {
       return; // Suppress these logs in unit tests
     }
@@ -55,8 +55,8 @@ beforeAll(() => {
   console.warn = (...args) => {
     const message = args[0];
     if (typeof message === 'string' && (
-      message.includes('⚠️ Header warnings') ||
-      message.includes('⚠️ Security warnings')
+      message.includes('[WARN] Header warnings') ||
+      message.includes('[WARN] Security warnings')
     )) {
       return; // Suppress these warnings in unit tests
     }
@@ -81,7 +81,7 @@ afterAll(() => {
   
   // Log final warning count for monitoring
   if (finalCount > 0) {
-    originalConsoleLog(`ℹ️ Test run completed with ${finalCount} suppressed act() warnings (budget: ${MAX_ACT_WARNINGS})`);
+    originalConsoleLog(`[INFO] Test run completed with ${finalCount} suppressed act() warnings (budget: ${MAX_ACT_WARNINGS})`);
   }
   
   // Restore original console methods

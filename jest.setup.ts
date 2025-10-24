@@ -7,7 +7,13 @@ if (process.env.TEST_INTEGRATION !== 'true') {
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = 'pk_test_51234567890abcdefghijk';
   process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test1234567890abcdefghijk';
 }
-process.env.NODE_ENV = 'test';
+// Safely set NODE_ENV for test environment
+Object.defineProperty(process.env, 'NODE_ENV', {
+  value: 'test',
+  writable: false,
+  enumerable: true,
+  configurable: true
+});
 process.env.TEST_MODE = 'true';
 
 // Feature flags for testing
@@ -43,7 +49,7 @@ console.log = (...args) => {
 (global as any).__originalConsoleError = originalConsoleError;
 
 // Check if console.error is already a jest mock (has mockImplementation property)
-const isConsoleMocked = console.error && typeof console.error.mockImplementation === 'function';
+const isConsoleMocked = console.error && typeof (console.error as any).mockImplementation === 'function';
 
 // Only override console.error if it hasn't been mocked by a test
 if (!isConsoleMocked) {
@@ -63,8 +69,8 @@ if (!isConsoleMocked) {
       // Suppress React act() warnings - these are handled by test quality monitoring
       if (message.includes('An update to') && message.includes('not wrapped in act')) {
         // Track count for monitoring (increment global counter if it exists)
-        if (typeof global.__actWarningCount === 'number') {
-          global.__actWarningCount++;
+        if (typeof (global as any).__actWarningCount === 'number') {
+          (global as any).__actWarningCount++;
         }
         return; // Suppress the warning
       }

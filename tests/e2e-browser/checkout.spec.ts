@@ -63,7 +63,7 @@ test.describe('Checkout Browser Tests', () => {
       await cvcField.fill('123');
       
       // Wait for validation to complete with production-grade polling
-      console.log('🔧 E2E Test - Waiting for form validation to complete...');
+      console.log('[CONFIG] E2E Test - Waiting for form validation to complete...');
       
       // Wait for the submit button to become enabled (indicating all validation passed)
       await page.waitForFunction(() => {
@@ -71,13 +71,13 @@ test.describe('Checkout Browser Tests', () => {
         const debugInfo = (window as any).__checkoutDebugInfo;
         
         if (submitButton && !submitButton.hasAttribute('disabled')) {
-          console.log('🔧 Submit button is enabled!');
+          console.log('[CONFIG] Submit button is enabled!');
           return true;
         }
         
         // Log current state for debugging
         if (debugInfo) {
-          console.log('🔧 Waiting... Current state:', {
+          console.log('[CONFIG] Waiting... Current state:', {
             elementsReady: debugInfo.elementsReady,
             hasClientSecret: debugInfo.hasClientSecret,
             isPaymentComplete: debugInfo.isPaymentComplete,
@@ -93,7 +93,7 @@ test.describe('Checkout Browser Tests', () => {
       const finalDebugInfo = await page.evaluate(() => {
         return (window as any).__checkoutDebugInfo || 'No debug info available';
       });
-      console.log('🔧 E2E Test - Final validation state before submit:', finalDebugInfo);
+      console.log('[CONFIG] E2E Test - Final validation state before submit:', finalDebugInfo);
       
       // Submit payment
       await page.click('[data-testid="submit-payment"]');
@@ -102,7 +102,7 @@ test.describe('Checkout Browser Tests', () => {
       // Set up console message listener for redirect confirmation
       let redirectDetected = false;
       const consoleListener = (msg: any) => {
-        if (msg.text().includes('🔄 Redirecting to success page:')) {
+        if (msg.text().includes('[REDIRECT] Redirecting to success page:')) {
           redirectDetected = true;
         }
       };
@@ -111,10 +111,10 @@ test.describe('Checkout Browser Tests', () => {
       try {
         // Wait for navigation using URL pattern
         await page.waitForURL('**/checkout/success**', { timeout: 30000 });
-        console.log('🔧 Navigation to success page detected');
+        console.log('[CONFIG] Navigation to success page detected');
       } catch (navError) {
         // Fallback: wait for redirect confirmation and manual check
-        console.log('🔧 Navigation event not detected, checking alternatives...');
+        console.log('[CONFIG] Navigation event not detected, checking alternatives...');
         
         // Wait up to 10 seconds for redirect log message
         const startTime = Date.now();
@@ -123,7 +123,7 @@ test.describe('Checkout Browser Tests', () => {
         }
         
         if (redirectDetected) {
-          console.log('🔧 Redirect initiated, waiting for completion...');
+          console.log('[CONFIG] Redirect initiated, waiting for completion...');
           await page.waitForTimeout(3000);
         }
         
@@ -143,7 +143,7 @@ test.describe('Checkout Browser Tests', () => {
       
     } finally {
       // Always output console logs for debugging
-      console.log('🔧 E2E Test Console Logs:');
+      console.log('[CONFIG] E2E Test Console Logs:');
       consoleLogs.forEach(log => console.log('  ', log));
     }
   });
@@ -205,7 +205,7 @@ test.describe('Checkout Browser Tests', () => {
           await expect(errorElement.first()).toBeVisible({ timeout: 10000 });
           const errorText = await errorElement.first().textContent();
           if (errorText && /declined|insufficient|failed|error/i.test(errorText)) {
-            console.log(`🔧 Found error message: ${errorText}`);
+            console.log(`[CONFIG] Found error message: ${errorText}`);
             errorFound = true;
             break;
           }
@@ -266,13 +266,13 @@ test.describe('Checkout Browser Tests', () => {
     await page.click('[data-testid="submit-payment"]');
     
     // Production-grade 3DS modal handling - detect different possible 3DS flows
-    console.log('🔧 Waiting for 3DS authentication or payment completion...');
+    console.log('[CONFIG] Waiting for 3DS authentication or payment completion...');
     
     // The 3DS card might not always trigger 3DS in test mode
     // Set up console listener for redirect detection
     let redirectDetected3DS = false;
     const listener3DS = (msg: any) => {
-      if (msg.text().includes('🔄 Redirecting to success page:')) {
+      if (msg.text().includes('[REDIRECT] Redirecting to success page:')) {
         redirectDetected3DS = true;
       }
     };
@@ -303,11 +303,11 @@ test.describe('Checkout Browser Tests', () => {
     }
     
     if (has3DS === false) {
-      console.log('🔧 Payment completed without 3DS challenge (test card may not require 3DS)');
+      console.log('[CONFIG] Payment completed without 3DS challenge (test card may not require 3DS)');
       return; // Skip 3DS handling, go directly to success verification
     }
     
-    console.log('🔧 3DS modal detected, proceeding with authentication...');
+    console.log('[CONFIG] 3DS modal detected, proceeding with authentication...');
     
     // The Complete button is in a nested iframe structure - use more direct approach
     try {
@@ -315,26 +315,26 @@ test.describe('Checkout Browser Tests', () => {
       const completeButton = page.locator('button:has-text("Complete")');
       await completeButton.waitFor({ timeout: 10000 });
       await completeButton.click();
-      console.log('🔧 3DS Complete button clicked successfully');
+      console.log('[CONFIG] 3DS Complete button clicked successfully');
     } catch (e1) {
       try {
         // Strategy 2: Look for Complete button in any visible frame
         await page.waitForTimeout(2000);
         const allCompleteButtons = page.locator('button').filter({ hasText: 'Complete' });
         const buttonCount = await allCompleteButtons.count();
-        console.log(`🔧 Found ${buttonCount} Complete buttons`);
+        console.log(`[CONFIG] Found ${buttonCount} Complete buttons`);
         
         if (buttonCount > 0) {
           await allCompleteButtons.first().click();
-          console.log('🔧 3DS Complete button clicked (strategy 2)');
+          console.log('[CONFIG] 3DS Complete button clicked (strategy 2)');
         } else {
           throw new Error('No Complete buttons found');
         }
       } catch (e2) {
         // Strategy 3: Manual iframe traversal with more specific selectors
-        console.log('🔧 Trying manual iframe approach...');
+        console.log('[CONFIG] Trying manual iframe approach...');
         const frames = await page.frames();
-        console.log(`🔧 Found ${frames.length} frames`);
+        console.log(`[CONFIG] Found ${frames.length} frames`);
         
         let buttonClicked = false;
         for (const frame of frames) {
@@ -342,7 +342,7 @@ test.describe('Checkout Browser Tests', () => {
             const completeBtn = frame.locator('button:has-text("Complete")');
             if (await completeBtn.count() > 0) {
               await completeBtn.click();
-              console.log('🔧 3DS Complete button clicked (manual frame approach)');
+              console.log('[CONFIG] 3DS Complete button clicked (manual frame approach)');
               buttonClicked = true;
               break;
             }
@@ -358,11 +358,11 @@ test.describe('Checkout Browser Tests', () => {
     }
     
     // Verify success after 3DS with same robust navigation detection as happy path
-    console.log('🔧 Waiting for 3DS success redirect...');
+    console.log('[CONFIG] Waiting for 3DS success redirect...');
     
     let redirect3DSDetected = false;
     const console3DSListener = (msg: any) => {
-      if (msg.text().includes('🔄 Redirecting to success page:')) {
+      if (msg.text().includes('[REDIRECT] Redirecting to success page:')) {
         redirect3DSDetected = true;
       }
     };
@@ -370,9 +370,9 @@ test.describe('Checkout Browser Tests', () => {
     
     try {
       await page.waitForURL('**/checkout/success**', { timeout: 25000 });
-      console.log('🔧 3DS navigation to success page detected');
+      console.log('[CONFIG] 3DS navigation to success page detected');
     } catch (nav3DSError) {
-      console.log('🔧 3DS navigation event not detected, checking alternatives...');
+      console.log('[CONFIG] 3DS navigation event not detected, checking alternatives...');
       
       const startTime3DS = Date.now();
       while (!redirect3DSDetected && (Date.now() - startTime3DS) < 8000) {
@@ -380,7 +380,7 @@ test.describe('Checkout Browser Tests', () => {
       }
       
       if (redirect3DSDetected) {
-        console.log('🔧 3DS redirect initiated, waiting for completion...');
+        console.log('[CONFIG] 3DS redirect initiated, waiting for completion...');
         await page.waitForTimeout(2000);
       }
       

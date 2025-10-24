@@ -45,7 +45,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json(response);
 
   } catch (error) {
-    console.error('❌ Payment failure monitoring API error:', error);
+    console.error('[ERROR] Payment failure monitoring API error:', error);
     
     return NextResponse.json(
       { 
@@ -74,7 +74,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     });
 
   } catch (error) {
-    console.error('❌ Failed to reset payment failure metrics:', error);
+    console.error('[ERROR] Failed to reset payment failure metrics:', error);
     
     return NextResponse.json(
       { 

@@ -14,4 +14,4 @@
 // Environment validation is handled by Jest module mapper -> __mocks__/utils/envValidation
 // Removed duplicate mock to prevent conflicts (integration tests use __mocks__ via moduleNameMapper)
 
-console.log('✅ Integration test mocks configured successfully');
+console.log('[SUCCESS] Integration test mocks configured successfully');

@@ -18,6 +18,8 @@ export const baseConfig: Partial<Config> = {
     '^@/(.*)$': '<rootDir>/src/$1',
     // Mock environment validation for tests
     '^@/utils/envValidation$': '<rootDir>/__mocks__/utils/envValidation',
+    // Mock stripe configuration for tests
+    '^@/config/stripe$': '<rootDir>/__mocks__/config/stripe',
   },
   // Run tests serially to avoid conflicts and rate limiting
   maxWorkers: 1,

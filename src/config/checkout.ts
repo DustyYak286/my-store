@@ -49,7 +49,7 @@ const envValidation = typeof window === 'undefined'
 
 // In development, log validation results for debugging
 if (isDevelopment() && envValidation.warnings.length > 0) {
-  console.log('🔧 Development mode: Environment variable warnings detected');
+  console.log('[CONFIG] Development mode: Environment variable warnings detected');
 }
 
 /**

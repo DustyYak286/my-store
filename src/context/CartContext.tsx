@@ -80,7 +80,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           if (response.ok) {
             const data = await response.json();
             if (data.success && data.shouldClear) {
-              console.log(`🧹 Cart cleared automatically: ${data.reason}`);
+              console.log(`[CLEAR] Cart cleared automatically: ${data.reason}`);
               setCartItems([]);
             }
           }

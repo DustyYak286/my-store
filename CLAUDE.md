@@ -20,12 +20,16 @@ npm run test:unit                # Run unit tests only
 npm run test:integration         # Run mocked integration tests
 npm run test:contract            # Run contract tests (requires Stripe keys)
 npm run test:api-integration     # Run comprehensive API integration tests
-npm run test:e2e                 # Run browser E2E tests with revolutionary monitoring
+npm run test:e2e                 # Run browser E2E tests with Playwright
 npm run test:all                 # Run all test suites
 npm run test:ci                  # Fast tests for CI/PRs (unit + mocked integration)
 npm run test:ci:full             # Full test suite for main branch
 npm run lint                     # Run ESLint
 npm run validate:stripe          # Validate Stripe environment keys
+npm run validate:stripe:strict   # Strict Stripe validation (warnings as errors)
+npm run validate:stripe-domains  # Validate Stripe domain verification
+npm run check:console-unicode    # Check for Unicode characters in console statements
+npm run setup:hooks              # Setup Git hooks for development
 ```
 
 ### Environment Management
@@ -46,92 +50,78 @@ npm run generate:env         # Generate example .env file
 
 ### Key Architectural Patterns
 
-#### 1. Context-Based State Management
-The application uses React Context for global state management:
-- `CartContext` - Shopping cart state (items, quantities, totals)
-- `CartModalContext` - Modal visibility and interactions
-- `ToastContext` - Notification system
+#### State Management (React Context)
+- `CartContext` - Shopping cart state, persisted to localStorage
+- `CartModalContext` - Modal visibility
+- `ToastContext` - Notifications
 
-State is persisted to localStorage with error handling and validation.
+#### Configuration
+- **Environment Variables**: `src/utils/envValidation.ts` - Type-safe validation with schema
+- **Checkout Config**: `src/config/checkout.ts` - Validation rules, UI, feature flags, i18n
 
-#### 2. Environment-Driven Configuration
-Centralized configuration in `src/config/checkout.ts` driven by type-safe environment variables:
-- Validation rules (email regex, field lengths)
-- UI customization (colors, delays)
-- Feature flags (real-time validation, billing section)
-- Internationalization (countries, messages)
-
-#### 3. Component Organization
+#### Component Organization
 ```
 src/components/
-├── forms/          # Reusable form inputs (InputField, SelectField)
-├── checkout/       # Checkout-specific sections
+├── forms/          # Reusable form inputs
+├── checkout/       # Checkout sections (CardPaymentForm, ExpressCheckoutSection, PaymentSection)
 └── [root]         # Main UI components
 ```
 
-#### 4. Custom Hooks Pattern
-Business logic extracted into custom hooks:
-- `useCart()` - Cart operations and state
-- `useCartTotals()` - Price calculations
+#### Custom Hooks
+- `useCart()` - Cart operations
 - `useCheckoutForm()` - Form validation and submission
-- `useFloatingCartVisibility()` - UI behavior
-- `useToast()` - Notifications
+- `useToastContext()` - Notifications
 
-#### 5. Type-Safe API Structure
+#### API Routes
 ```
-src/app/api/products/
-├── route.ts        # GET /api/products
-├── [id]/route.ts   # GET /api/products/[id]
-└── data.ts         # Product data source
+src/app/api/
+├── products/
+│   ├── route.ts        # GET /api/products
+│   ├── [id]/route.ts   # GET /api/products/[id]
+│   └── data.ts         # Product data source
+├── payments/
+│   ├── create-intent/  # PaymentIntent creation
+│   ├── initialize-intent/ # PaymentIntent initialization
+│   └── update-intent/  # PaymentIntent updates
+├── orders/[id]/        # Order management and persistence
+├── webhooks/
+│   ├── stripe/         # Stripe webhook handling
+│   └── monitoring/     # Webhook monitoring
+└── cart/check-clearing/ # Cart clearing verification
 ```
 
-### Environment Validation System
-Production-grade environment validation with:
+### Environment Validation
+Type-safe validation system (`src/utils/envValidation.ts`):
 - **Build-time validation** - Prevents deployment with invalid config
 - **Runtime validation** - Graceful fallbacks in production
-- **Type safety** - Schema-based validation with TypeScript integration
-- **Error boundaries** - Production error handling
+- **Schema-based** - TypeScript integration with Zod-style validation
+- Validates: checkout behavior, validation rules, UI customization, feature flags
 
-Configuration validated includes checkout behavior, validation rules, UI customization, and feature flags.
+### Testing Architecture
+5 test types with comprehensive coverage:
 
-### Revolutionary Testing Architecture
-Production-grade testing system with industry-leading 5-layer monitoring architecture:
+#### Test Types
+- **Unit Tests** (`npm run test`) - Fast, mocked, no secrets required (< 30s)
+- **Integration Tests** (`npm run test:integration`) - Mocked Stripe, centralized config (< 60s)
+- **Contract Tests** (`npm run test:contract`) - Real Stripe test API validation (< 90s)
+- **API Integration** (`npm run test:api-integration`) - Comprehensive server-side testing (< 5m)
+- **Browser E2E** (`npm run test:e2e`) - Playwright browser tests with E2E monitoring infrastructure (< 3m)
 
-- **Unit Tests** (`npm run test`) - Fast, mocked, no secrets required
-- **Integration Tests** (`npm run test:integration`) - Mocked Stripe, centralized config
-- **Contract Tests** (`npm run test:contract`) - Real Stripe test API validation
-- **API Integration** (`npm run test:api-integration`) - Comprehensive server-side testing
-- **Browser E2E** (`npm run test:e2e`) - Revolutionary 5-layer monitoring system
+#### Key Infrastructure
+- **Centralized Environment** (`tests/config/test-environment.ts`) - Type-safe Zod validation
+- **E2E Test Monitoring** (`src/components/CheckoutForm.tsx:229-912`) - Multi-layer payment detection for E2E tests only (activates when `navigator.webdriver` detected)
+- **Cross-Process Persistence** (`src/lib/orderStore.ts`) - File-based storage for E2E, in-memory for development
+- **Enhanced Assertions** (`tests/helpers/monitoringAssertions.ts`) - Validation beyond basic Jest
+- **Async Test Utilities** (`tests/setup/async-utils.ts`) - `flushAsync()` prevents act() warnings
+- **Mock Architecture** (`tests/mocks/shared/mockEnvConfig.ts`) - Single source of truth for all test environments
 
-**Key Technical Features**:
-- **Centralized environment loader** (`tests/config/test-environment.ts`) - Type-safe configuration
-- **Production-grade resource management** - Clean test exits with comprehensive diagnostics
-- **Warning budget system** - Prevents test quality degradation (max 10 React `act()` warnings)
-- **Type-safe configuration** - Zod validation with TypeScript integration
-- **Cross-process communication** - File-based order persistence for E2E reliability
+#### Quality Management
+- **Warning Budget** - Max 10 React `act()` warnings per run, tests fail if exceeded
+- **Resource Leak Detection** - Node.js handle monitoring with diagnostics
+- **Clean Test Exits** - Expected behavior varies by test type (unit: clean, API integration: 2 TLS socket leaks safe to ignore)
+- **ADR-003 Strategy** - 3DS E2E test quarantined, mock-based coverage maintained
 
-**Revolutionary Innovations**:
-- **5-Layer Monitoring System** - Unprecedented payment completion detection
-- **Cross-Process Order Persistence** - Architectural breakthrough for E2E testing
-- **Environment-Driven Configuration** - Scales to 25+ countries dynamically
-- **ADR-003 3DS Strategy** - Evidence-based test quarantine with comprehensive coverage
-
-**Clean Architecture**: Production-grade test organization with zero redundancies, zero mock conflicts, and single source of truth for configurations
-
-**Mock Architecture Excellence**:
-- **Shared Configuration** (`tests/mocks/shared/mockEnvConfig.ts`) - Single source of truth for all environment objects
-- **Factory Pattern** - Fresh mock instances per test for perfect isolation
-- **Clean Separation** - Unit tests use `__mocks__/`, integration tests use factory pattern
-- **DRY Principle** - All mocks inherit from shared configuration, one place to update
-
-### Test Quality Management
-Production-grade test monitoring with warning budget system:
-- **Warning Budget**: Max 10 React `act()` warnings per test run
-- **Async Cleanup**: Global cleanup utilities prevent timing issues
-- **Resource Management**: Proper AbortController + mounted flag patterns
-- **CI Integration**: Tests fail if quality thresholds exceeded
-
-For actions that require more details related to TESTING, ALWAYS CHECK `docs/TESTING.md` for comprehensive testing guidance and THOROUGHLY understand our testing strategy. NEVER MAKE UNFOUNDED ASSUMPTIONS. Check `tests/setup/README.md` if you need implementation details.
+IMPORTANT: For actions requiring testing details, ALWAYS CHECK `docs/TESTING.md` for comprehensive guidance. NEVER MAKE UNFOUNDED ASSUMPTIONS about testing strategy. Check `tests/setup/README.md` for implementation details.
 
 ### File Import Patterns
 - Use `@/` path alias for all src imports
@@ -151,4 +141,6 @@ Always run environment validation before build. The system will:
 - Show helpful error messages for invalid values
 - Generate example .env files
 - Allow emergency builds with `build:unsafe` if needed
+
+IMPORTANT: For Stripe payment implementation, ALWAYS refer to `docs/STRIPE_IMPLEMENTATION_GUIDE.md` for current implementation status, best practices, and implementation roadmap. This is the single source of truth for Stripe integration.
 

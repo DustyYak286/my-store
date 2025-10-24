@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbo",
     "build": "npm run validate:env && next build",
     "build:unsafe": "next build",
     "start": "next start",
@@ -24,7 +24,10 @@
     "validate:env:strict": "node scripts/validate-env.js --strict",
     "validate:stripe": "node scripts/require-stripe-keys.js",
     "validate:stripe:strict": "node scripts/require-stripe-keys.js --strict",
-    "generate:env": "node scripts/generate-env-example.js"
+    "validate:stripe-domains": "node scripts/validate-stripe-domains.js",
+    "generate:env": "node scripts/generate-env-example.js",
+    "check:console-unicode": "node scripts/check-console-unicode.js",
+    "setup:hooks": "node scripts/setup-git-hooks.js"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^3.9.0",

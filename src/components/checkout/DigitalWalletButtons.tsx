@@ -58,7 +58,7 @@ export default function DigitalWalletButtons({
   
   // Debug logging
   if (process.env.NODE_ENV === 'development') {
-    console.log('🔧 DigitalWalletButtons props:', {
+    console.log('[CONFIG] DigitalWalletButtons props:', {
       amount,
       isValidAmount,
       cartItemsCount: cartItems.length,
@@ -116,7 +116,7 @@ export default function DigitalWalletButtons({
 
       // Validate amount before creating payment request
       if (!isValidAmount) {
-        console.error('❌ DigitalWalletButtons: Invalid amount for payment request:', amount);
+        console.error('[ERROR] DigitalWalletButtons: Invalid amount for payment request:', amount);
         setError(`Invalid payment amount: ${amount}. Please add items to cart.`);
         setIsInitializing(false);
         return;
@@ -132,7 +132,7 @@ export default function DigitalWalletButtons({
         setIsInitializing(true);
         setError(null);
 
-        console.log('🔧 Creating payment request with amount:', amount);
+        console.log('[CONFIG] Creating payment request with amount:', amount);
 
         const pr = stripe.paymentRequest({
           country: 'RO',

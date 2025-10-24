@@ -49,7 +49,7 @@ export interface CartClearingOptions {
 
 export const useCartClearingResilience = (options: CartClearingOptions = {}) => {
   const router = useRouter();
-  const { clearCart, cartItems, cartId } = useCart();
+  const { clearCart, cartItems } = useCart();
   const {
     enableAutoCheck = true,
     checkInterval = 5000, // 5 seconds
@@ -210,7 +210,7 @@ export const useCartClearingResilience = (options: CartClearingOptions = {}) => 
       const completionRecord: OrderCompletionRecord = {
         ...orderDetails,
         completedAt: new Date().toISOString(),
-        sessionId: currentSessionId || undefined,
+        ...(currentSessionId ? { sessionId: currentSessionId } : {}),
       };
 
       const existingRecords = localStorage.getItem(ORDER_COMPLETION_KEY);
@@ -222,7 +222,7 @@ export const useCartClearingResilience = (options: CartClearingOptions = {}) => 
       
       localStorage.setItem(ORDER_COMPLETION_KEY, JSON.stringify(trimmedRecords));
       
-      console.log('📦 Order completion recorded for cart clearing:', orderDetails.orderNumber);
+      console.log('[TARGET] Order completion recorded for cart clearing:', orderDetails.orderNumber);
     } catch (error) {
       console.error('Error recording order completion:', error);
     }
@@ -249,7 +249,7 @@ export const useCartClearingResilience = (options: CartClearingOptions = {}) => 
           hasChecked: true,
           shouldClear: true,
           clearingMethod: 'server_instruction',
-          clearingReason: serverCheck.reason,
+          ...(serverCheck.reason ? { clearingReason: serverCheck.reason } : {}),
           lastCheckTimestamp: new Date().toISOString(),
         }));
         
@@ -267,7 +267,7 @@ export const useCartClearingResilience = (options: CartClearingOptions = {}) => 
           hasChecked: true,
           shouldClear: true,
           clearingMethod: 'order_completion',
-          clearingReason: orderCheck.reason,
+          ...(orderCheck.reason ? { clearingReason: orderCheck.reason } : {}),
           lastCheckTimestamp: new Date().toISOString(),
         }));
         
@@ -285,7 +285,7 @@ export const useCartClearingResilience = (options: CartClearingOptions = {}) => 
           hasChecked: true,
           shouldClear: true,
           clearingMethod: 'payment_verification',
-          clearingReason: paymentCheck.reason,
+          ...(paymentCheck.reason ? { clearingReason: paymentCheck.reason } : {}),
           lastCheckTimestamp: new Date().toISOString(),
         }));
         
@@ -342,16 +342,14 @@ export const useCartClearingResilience = (options: CartClearingOptions = {}) => 
       clearCart();
       
       // Clear any pending clearing flags
-      setClearingState(prev => ({
-        ...prev,
-        shouldClear: false,
-        clearingMethod: undefined,
-        clearingReason: undefined,
-      }));
+      setClearingState(prev => {
+        const { clearingMethod, clearingReason, ...rest } = prev;
+        return { ...rest, shouldClear: false };
+      });
 
       onClearingCompleted?.(true, clearingState.clearingMethod || 'unknown');
       
-      console.log(`📦 Cart cleared successfully via ${clearingState.clearingMethod}`);
+      console.log(`[TARGET] Cart cleared successfully via ${clearingState.clearingMethod}`);
       return true;
       
     } catch (error) {

@@ -50,7 +50,7 @@ export function extractWebhookMetadata(paymentIntent: any): WebhookMetadata | nu
     const metadata = paymentIntent?.metadata;
     
     if (!metadata || typeof metadata !== 'object') {
-      console.error('❌ Webhook metadata missing or invalid');
+      console.error('[ERROR] Webhook metadata missing or invalid');
       return null;
     }
     
@@ -59,13 +59,13 @@ export function extractWebhookMetadata(paymentIntent: any): WebhookMetadata | nu
     const missingFields = requiredFields.filter(field => !metadata[field]);
     
     if (missingFields.length > 0) {
-      console.error(`❌ Webhook metadata missing required fields: ${missingFields.join(', ')}`);
+      console.error(`[ERROR] Webhook metadata missing required fields: ${missingFields.join(', ')}`);
       return null;
     }
     
     return metadata as WebhookMetadata;
   } catch (error) {
-    console.error('❌ Error extracting webhook metadata:', error);
+    console.error('[ERROR] Error extracting webhook metadata:', error);
     return null;
   }
 }
@@ -125,7 +125,7 @@ export function logWebhookProcessing(
   eventType: string, 
   eventId: string
 ): void {
-  console.log(`🪝 Processing webhook: ${eventType}`);
+  console.log(`[WEBHOOK] Processing webhook: ${eventType}`);
   console.log(`   Event ID: ${eventId}`);
   console.log(`   Order ID: ${metadata.orderId}`);
   console.log(`   Order Number: ${metadata.orderNumber}`);

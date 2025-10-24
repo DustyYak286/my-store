@@ -145,7 +145,7 @@ export function useCartClearing() {
     // Method 1: Check order completion records
     const orderCheck = checkOrderCompletionRecords();
     if (orderCheck.shouldClear) {
-      console.log(`🧹 ${orderCheck.reason}`);
+      console.log(`[CLEAR] ${orderCheck.reason}`);
       clearCart();
       
       setState(prev => ({
@@ -161,7 +161,7 @@ export function useCartClearing() {
     // Method 2: Check payment completion context
     const paymentCheck = checkPaymentCompletionContext();
     if (paymentCheck.shouldClear) {
-      console.log(`🧹 ${paymentCheck.reason}`);
+      console.log(`[CLEAR] ${paymentCheck.reason}`);
       clearCart();
       
       setState(prev => ({
@@ -189,7 +189,10 @@ export function useCartClearing() {
       return false;
     }
 
-    setState(prev => ({ ...prev, isChecking: true, error: undefined }));
+    setState(prev => {
+      const { error, ...rest } = prev;
+      return { ...rest, isChecking: true };
+    });
 
     try {
       const params = new URLSearchParams();
@@ -210,7 +213,7 @@ export function useCartClearing() {
       const data: CartClearingCheckResponse = await response.json();
 
       if (data.success && data.shouldClear) {
-        console.log(`🧹 Clearing cart based on server instruction: ${data.reason}`);
+        console.log(`[CLEAR] Clearing cart based on server instruction: ${data.reason}`);
         clearCart();
         
         setState(prev => ({
@@ -296,7 +299,7 @@ export function useCartClearing() {
       const completionRecord: OrderCompletionRecord = {
         ...orderDetails,
         completedAt: new Date().toISOString(),
-        sessionId: currentSessionId || undefined,
+        ...(currentSessionId ? { sessionId: currentSessionId } : {}),
       };
 
       const existingRecords = localStorage.getItem(ORDER_COMPLETION_KEY);
@@ -308,7 +311,7 @@ export function useCartClearing() {
       
       localStorage.setItem(ORDER_COMPLETION_KEY, JSON.stringify(trimmedRecords));
       
-      console.log('📦 Order completion recorded for cart clearing resilience:', orderDetails.orderNumber);
+      console.log('[TARGET] Order completion recorded for cart clearing resilience:', orderDetails.orderNumber);
     } catch (error) {
       console.error('Error recording order completion:', error);
     }
@@ -370,7 +373,10 @@ export function useCartClearingCheck() {
 
       if (data.success && data.shouldClear) {
         clearCart();
-        return { cleared: true, reason: data.reason };
+        return {
+          cleared: true,
+          ...(data.reason ? { reason: data.reason } : {}),
+        };
       }
 
       return { cleared: false };

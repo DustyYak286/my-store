@@ -7,14 +7,14 @@
  */
 
 export default async function globalTeardown() {
-  console.log('🔍 Global Teardown: Checking for leaks...');
+  console.log('[DEBUG] Global Teardown: Checking for leaks...');
 
   try {
     // Diagnostic: Check for remaining open handles (should be none if suites cleaned up properly)
     if ((process as any)._getActiveHandles) {
       const activeHandles = (process as any)._getActiveHandles();
       if (activeHandles.length > 0) {
-        console.warn('⚠️  LEAK DETECTED: Active handles found after all suites completed:');
+        console.warn('[WARN]  LEAK DETECTED: Active handles found after all suites completed:');
         console.warn('    This suggests a test suite failed to clean up properly.');
         console.warn('    Handles:', activeHandles.map((h: any) => h.constructor.name));
         
@@ -31,7 +31,7 @@ export default async function globalTeardown() {
           }
         });
       } else {
-        console.log('✅ No active handles detected - all suites cleaned up properly');
+        console.log('[SUCCESS] No active handles detected - all suites cleaned up properly');
       }
     }
 
@@ -41,13 +41,13 @@ export default async function globalTeardown() {
     // Force garbage collection if available (helps with final cleanup)
     if (global.gc) {
       global.gc();
-      console.log('✅ Final garbage collection triggered');
+      console.log('[SUCCESS] Final garbage collection triggered');
     }
 
-    console.log('✅ Global teardown complete');
+    console.log('[SUCCESS] Global teardown complete');
     
   } catch (error) {
-    console.error('❌ Error during global teardown:', error);
+    console.error('[ERROR] Error during global teardown:', error);
     // Don't throw - let tests complete even if global cleanup fails
   }
 }

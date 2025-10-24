@@ -52,7 +52,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     });
 
     if (clearingCheck.shouldClear) {
-      console.log(`🧹 Cart clearing check: CLEAR cart for session=${sessionId}, order=${orderId}, reason=${clearingCheck.reason}`);
+      console.log(`[CLEAR] Cart clearing check: CLEAR cart for session=${sessionId}, order=${orderId}, reason=${clearingCheck.reason}`);
     }
 
     return NextResponse.json({

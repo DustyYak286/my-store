@@ -59,7 +59,7 @@ function ErrorTracking({ orderId, error, errorCode, paymentIntentId }: ErrorTrac
         });
       }
 
-      console.log('❌ Payment error tracked:', {
+      console.log('[ERROR] Payment error tracked:', {
         orderId,
         error,
         errorCode,
@@ -256,8 +256,8 @@ export default function PaymentErrorPage() {
     
     // Set payment details from URL params
     setPaymentDetails({
-      paymentIntentId: paymentIntentId || undefined,
-      errorCode: errorCode || undefined,
+      ...(paymentIntentId ? { paymentIntentId } : {}),
+      ...(errorCode ? { errorCode } : {}),
       errorMessage,
     });
 
@@ -312,10 +312,10 @@ export default function PaymentErrorPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Error tracking */}
       <ErrorTracking
-        orderId={order?.id}
+        {...(order?.id ? { orderId: order.id } : {})}
         error={paymentDetails.errorMessage}
-        errorCode={paymentDetails.errorCode}
-        paymentIntentId={paymentDetails.paymentIntentId}
+        {...(paymentDetails.errorCode ? { errorCode: paymentDetails.errorCode } : {})}
+        {...(paymentDetails.paymentIntentId ? { paymentIntentId: paymentDetails.paymentIntentId } : {})}
       />
       
       <div className="max-w-3xl mx-auto py-16 px-4 sm:py-24 sm:px-6 lg:px-8">
@@ -356,7 +356,7 @@ export default function PaymentErrorPage() {
                   <div>
                     <span className="font-medium text-gray-500">Amount:</span>
                     <span className="ml-2 text-gray-900">
-                      {formatPrice(order.totals.total, order.currency)}
+                      {formatPrice(order.totals.total)} {order.currency}
                     </span>
                   </div>
                 </div>
@@ -379,7 +379,7 @@ export default function PaymentErrorPage() {
             {/* Actions */}
             <div className="border-t border-gray-200 pt-6">
               <div className="flex flex-col sm:flex-row gap-4">
-                {errorInfo.canRetry && <RetryPaymentButton orderId={order?.id} />}
+                {errorInfo.canRetry && order?.id && <RetryPaymentButton orderId={order.id} />}
                 
                 <Link
                   href="/checkout"

@@ -67,7 +67,6 @@ export interface UseStripePaymentOptions {
  */
 export function useStripePayment(options: UseStripePaymentOptions = {}) {
   const v2Hook = useStripePaymentV2({
-    gateway: undefined, // Use default Stripe gateway
     apiEndpoint: '/api/payments/create-intent',
   });
 

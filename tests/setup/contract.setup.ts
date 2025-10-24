@@ -50,7 +50,7 @@ beforeAll(() => {
     throw new Error(`Missing environment variables for contract tests: ${missing.join(', ')}`)
   }
 
-  console.log('✅ Contract test environment validated')
+  console.log('[SUCCESS] Contract test environment validated')
   console.log('Using Stripe secret key:', mask(secretKey))
   console.log('Using Stripe publishable key:', mask(publishableKey))
 })
@@ -76,5 +76,5 @@ afterAll(async () => {
   // Clean up singleton instance
   resetStripeClient()
   ;(global as any).__STRIPE_INTEGRATION__ = undefined
-  console.log('🧹 Contract test cleanup completed')
+  console.log('[CLEAR] Contract test cleanup completed')
 })

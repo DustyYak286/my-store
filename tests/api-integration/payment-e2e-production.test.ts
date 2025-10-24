@@ -40,15 +40,15 @@ import Stripe from 'stripe';
 import crypto from 'crypto';
 
 beforeAll(() => {
-  console.log('🔥 Starting Production-Grade E2E Payment Tests');
-  console.log('⚠️  These tests simulate real payment scenarios with production rigor');
+  console.log('[FIRE] Starting Production-Grade E2E Payment Tests');
+  console.log('[WARN]  These tests simulate real payment scenarios with production rigor');
 });
 
 afterAll(async () => {
   // Dynamic import to avoid module-level loading issues
   const { cleanupTestPaymentIntents } = await import('../utils/stripe-test-helpers');
   await cleanupTestPaymentIntents('prod_e2e_test');
-  console.log('✅ Production E2E test cleanup completed');
+  console.log('[SUCCESS] Production E2E test cleanup completed');
 });
 
 describe('Production-Grade Payment Flow Testing', () => {
@@ -91,7 +91,7 @@ describe('Production-Grade Payment Flow Testing', () => {
           }
         });
 
-        console.log(`🔄 Testing complete lifecycle for ${testId}`);
+        console.log(`[REDIRECT] Testing complete lifecycle for ${testId}`);
 
         // Step 1: Order Creation and Payment Intent
         const createRequest = new NextRequest('http://localhost:3000/api/payments/create-intent', {
@@ -119,11 +119,11 @@ describe('Production-Grade Payment Flow Testing', () => {
 
         // Verify order initial state
         const initialOrder = getOrderById(order.id);
-        console.log('🔍 Debug - Initial Order:', JSON.stringify(initialOrder, null, 2));
-        console.log('🔍 Debug - Expected amount (bani):', ronToBani(testAmount));
-        console.log('🔍 Debug - Actual total:', initialOrder?.totals?.total || initialOrder?.total);
-        console.log('🔍 Debug - Payment Intent ID:', paymentIntent.id);
-        console.log('🔍 Debug - Order payment info:', JSON.stringify(initialOrder?.payment, null, 2));
+        console.log('[DEBUG] Debug - Initial Order:', JSON.stringify(initialOrder, null, 2));
+        console.log('[DEBUG] Debug - Expected amount (bani):', ronToBani(testAmount));
+        console.log('[DEBUG] Debug - Actual total:', initialOrder?.totals?.total || initialOrder?.total);
+        console.log('[DEBUG] Debug - Payment Intent ID:', paymentIntent.id);
+        console.log('[DEBUG] Debug - Order payment info:', JSON.stringify(initialOrder?.payment, null, 2));
         
         expect(initialOrder?.status).toBe('pending');
         // Verify order exists and has basic structure
@@ -178,7 +178,7 @@ describe('Production-Grade Payment Flow Testing', () => {
 
         // Step 5: Verify complete order state transition
         const finalOrder = getOrderById(order.id);
-        console.log('🔍 Debug - Final Order:', JSON.stringify(finalOrder, null, 2));
+        console.log('[DEBUG] Debug - Final Order:', JSON.stringify(finalOrder, null, 2));
         
         // Core production test validations
         expect(finalOrder).toBeDefined();
@@ -190,7 +190,7 @@ describe('Production-Grade Payment Flow Testing', () => {
         expect(finalOrder?.id).toBe(order.id);
         expect(finalOrder?.totals?.total || finalOrder?.total).toBe(actualTotal); // Same as initial order
 
-        console.log(`✅ Complete lifecycle test passed for ${testId}`);
+        console.log(`[SUCCESS] Complete lifecycle test passed for ${testId}`);
       }, 30000);
 
       it('should handle failed payment with proper cleanup', async () => {
@@ -259,7 +259,7 @@ describe('Production-Grade Payment Flow Testing', () => {
         expect(failedOrder?.status).toBe('failed');
         expect(failedOrder?.paymentIntentId || failedOrder?.payment?.paymentIntentId).toBe(mockFailedPI.id);
 
-        console.log(`✅ Failed payment cleanup test passed for ${testId}`);
+        console.log(`[SUCCESS] Failed payment cleanup test passed for ${testId}`);
       }, 20000);
     });
 
@@ -335,7 +335,7 @@ describe('Production-Grade Payment Flow Testing', () => {
         const pendingOrder = getOrderById(createData.order.id);
         expect(pendingOrder?.status).toBe('pending');
 
-        console.log(`✅ 3D Secure authentication test passed for ${testId}`);
+        console.log(`[SUCCESS] 3D Secure authentication test passed for ${testId}`);
       }, 20000);
     });
   });
@@ -373,7 +373,7 @@ describe('Production-Grade Payment Flow Testing', () => {
         // Should reject invalid signature
         expect([400, 401, 403]).toContain(response.status);
 
-        console.log(`✅ Invalid webhook signature rejection test passed`);
+        console.log(`[SUCCESS] Invalid webhook signature rejection test passed`);
       });
 
       it('should reject webhooks with expired timestamps', async () => {
@@ -414,7 +414,7 @@ describe('Production-Grade Payment Flow Testing', () => {
         // Should reject expired timestamp
         expect([400, 401]).toContain(response.status);
 
-        console.log(`✅ Expired timestamp rejection test passed`);
+        console.log(`[SUCCESS] Expired timestamp rejection test passed`);
       });
     });
 
@@ -505,7 +505,7 @@ describe('Production-Grade Payment Flow Testing', () => {
         expect(finalOrder?.totals?.total || finalOrder?.total).toBe(originalOrderTotal); // Should remain original order total
         expect(finalOrder?.status).toBe('pending'); // Order should remain in pending state
 
-        console.log(`✅ Payment amount tampering prevention test passed`);
+        console.log(`[SUCCESS] Payment amount tampering prevention test passed`);
       });
 
       it('should validate currency precision', async () => {
@@ -561,7 +561,7 @@ describe('Production-Grade Payment Flow Testing', () => {
           expect(createData.paymentIntent.amount).toBe(createData.order.total);
         }
 
-        console.log(`✅ Currency precision validation test passed`);
+        console.log(`[SUCCESS] Currency precision validation test passed`);
       });
     });
 
@@ -619,7 +619,7 @@ describe('Production-Grade Payment Flow Testing', () => {
         expect(successCount).toBeGreaterThan(0);
         expect(successCount + rateLimitedCount).toBe(responses.length);
 
-        console.log(`✅ Rate limiting test passed - ${successCount} successful, ${rateLimitedCount} rate limited`);
+        console.log(`[SUCCESS] Rate limiting test passed - ${successCount} successful, ${rateLimitedCount} rate limited`);
       }, 25000);
     });
   });
@@ -702,7 +702,7 @@ describe('Production-Grade Payment Flow Testing', () => {
         const finalOrder = getOrderById(order.id);
         expect(finalOrder?.status).toBe('paid');
 
-        console.log(`✅ Webhook failure recovery test passed for ${testId}`);
+        console.log(`[SUCCESS] Webhook failure recovery test passed for ${testId}`);
       }, 25000);
     });
 
@@ -768,7 +768,7 @@ describe('Production-Grade Payment Flow Testing', () => {
         const successfulResponses = responses.filter(r => r.status === 200);
         expect(successfulResponses.length).toBeGreaterThan(0);
 
-        console.log(`✅ Concurrent payment handling test passed - ${successfulResponses.length} successful requests`);
+        console.log(`[SUCCESS] Concurrent payment handling test passed - ${successfulResponses.length} successful requests`);
       }, 30000);
     });
   });
@@ -876,7 +876,7 @@ describe('Production-Grade Payment Flow Testing', () => {
         expect(finalOrder?.billingAddress).toEqual(initialOrder?.billingAddress);
         expect(finalOrder?.items).toEqual(initialOrder?.items);
 
-        console.log(`✅ Order state consistency test passed for ${testId}`);
+        console.log(`[SUCCESS] Order state consistency test passed for ${testId}`);
       }, 25000);
     });
 
@@ -960,7 +960,7 @@ describe('Production-Grade Payment Flow Testing', () => {
         expect(finalOrder?.timestamps?.createdAt).toBeDefined();
         expect(finalOrder?.timestamps?.updatedAt).toBeDefined();
 
-        console.log(`✅ Audit trail validation test passed for ${testId}`);
+        console.log(`[SUCCESS] Audit trail validation test passed for ${testId}`);
       }, 20000);
     });
   });
@@ -1028,7 +1028,7 @@ describe('Production-Grade Payment Flow Testing', () => {
         // Memory increase should be reasonable (less than 50MB for this test)
         expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024);
 
-        console.log(`✅ Memory management test passed - Memory increase: ${(memoryIncrease / 1024 / 1024).toFixed(2)}MB`);
+        console.log(`[SUCCESS] Memory management test passed - Memory increase: ${(memoryIncrease / 1024 / 1024).toFixed(2)}MB`);
       }, 15000);
     });
   });
@@ -1071,7 +1071,7 @@ describe('Production-Grade Payment Flow Testing', () => {
           // Verify error logging occurred
           expect(errorLogs.length).toBeGreaterThan(0);
 
-          console.log(`✅ Error logging and monitoring test passed for ${testId}`);
+          console.log(`[SUCCESS] Error logging and monitoring test passed for ${testId}`);
         } finally {
           // Restore original console.error
           console.error = originalConsoleError;
@@ -1126,7 +1126,7 @@ describe('Production-Grade Payment Flow Testing', () => {
         // Payment creation should complete within reasonable time (5 seconds)
         expect(processingTime).toBeLessThan(5000);
 
-        console.log(`✅ Performance metrics test passed - Processing time: ${processingTime}ms`);
+        console.log(`[SUCCESS] Performance metrics test passed - Processing time: ${processingTime}ms`);
       }, 15000);
     });
   });

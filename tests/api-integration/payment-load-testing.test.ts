@@ -24,15 +24,15 @@ import crypto from 'crypto';
 // import { getOrderById, getAllOrders } from '@/utils/orderStore';
 
 beforeAll(() => {
-  console.log('🚀 Starting Production-Grade Load Testing');
-  console.log('⚠️  These tests simulate high-load payment scenarios');
+  console.log('[LAUNCH] Starting Production-Grade Load Testing');
+  console.log('[WARN]  These tests simulate high-load payment scenarios');
 });
 
 afterAll(async () => {
   // Dynamic import to avoid module-level loading issues
   const { cleanupTestPaymentIntents } = await import('../utils/stripe-test-helpers');
   await cleanupTestPaymentIntents('load_test');
-  console.log('✅ Load testing cleanup completed');
+  console.log('[SUCCESS] Load testing cleanup completed');
 });
 
 describe('Production Load Testing', () => {
@@ -50,7 +50,7 @@ describe('Production Load Testing', () => {
         }
       ];
 
-      console.log(`🔥 Starting concurrent payment test with ID: ${testId}`);
+      console.log(`[FIRE] Starting concurrent payment test with ID: ${testId}`);
 
       // Dynamic imports to avoid Request/Response loading issues in Jest
       const { POST: createPaymentIntent } = await import('@/app/api/payments/create-intent/route');
@@ -100,7 +100,7 @@ describe('Production Load Testing', () => {
       const errorCount = statuses.filter(s => s >= 400).length;
       const rateLimitedCount = statuses.filter(s => s === 429).length;
 
-      console.log(`📊 Load Test Results:`);
+      console.log(`[STATS] Load Test Results:`);
       console.log(`   Total Requests: ${concurrentCount}`);
       console.log(`   Successful: ${successCount}`);
       console.log(`   Rate Limited: ${rateLimitedCount}`);
@@ -114,7 +114,7 @@ describe('Production Load Testing', () => {
       expect(totalTime).toBeLessThan(30000); // Complete within 30 seconds
       expect(totalTime / concurrentCount).toBeLessThan(5000); // Avg < 5s per request
 
-      console.log(`✅ Concurrent payment load test passed`);
+      console.log(`[SUCCESS] Concurrent payment load test passed`);
     }, 60000);
 
     it('should handle sequential payment processing under sustained load', async () => {
@@ -129,7 +129,7 @@ describe('Production Load Testing', () => {
         }
       ];
 
-      console.log(`⚡ Starting sequential load test with ID: ${testId}`);
+      console.log(`[LIGHTNING] Starting sequential load test with ID: ${testId}`);
 
       // Dynamic imports to avoid Request/Response loading issues in Jest
       const { POST: createPaymentIntent } = await import('@/app/api/payments/create-intent/route');
@@ -185,7 +185,7 @@ describe('Production Load Testing', () => {
       const maxTime = Math.max(...results.map(r => r.time));
       const minTime = Math.min(...results.map(r => r.time));
 
-      console.log(`📈 Sequential Load Test Results:`);
+      console.log(`[CHART] Sequential Load Test Results:`);
       console.log(`   Total Requests: ${sequentialCount}`);
       console.log(`   Successful: ${successCount}`);
       console.log(`   Average Time: ${avgTime.toFixed(2)}ms`);
@@ -197,7 +197,7 @@ describe('Production Load Testing', () => {
       expect(avgTime).toBeLessThan(3000); // Average < 3s
       expect(maxTime).toBeLessThan(10000); // No request > 10s
 
-      console.log(`✅ Sequential load test passed`);
+      console.log(`[SUCCESS] Sequential load test passed`);
     }, 45000);
   });
 
@@ -209,7 +209,7 @@ describe('Production Load Testing', () => {
       const orderCount = 15;
       const orders: any[] = [];
 
-      console.log(`🎯 Creating ${orderCount} orders for webhook load test`);
+      console.log(`[TRACK] Creating ${orderCount} orders for webhook load test`);
 
       // Dynamic imports to avoid Request/Response loading issues in Jest
       const { POST: createPaymentIntent } = await import('@/app/api/payments/create-intent/route');
@@ -251,7 +251,7 @@ describe('Production Load Testing', () => {
 
       expect(orders.length).toBeGreaterThan(orderCount * 0.8); // At least 80% created successfully
 
-      console.log(`📨 Processing ${orders.length} webhooks concurrently`);
+      console.log(`[MESSAGE] Processing ${orders.length} webhooks concurrently`);
 
       // Dynamic imports to avoid Request/Response loading issues in Jest
       const { POST: stripeWebhook } = await import('@/app/api/webhooks/stripe/route');
@@ -293,7 +293,7 @@ describe('Production Load Testing', () => {
       const successfulWebhooks = webhookStatuses.filter(s => s === 200).length;
       const failedWebhooks = webhookStatuses.filter(s => s >= 400).length;
 
-      console.log(`🎯 Webhook Load Test Results:`);
+      console.log(`[TRACK] Webhook Load Test Results:`);
       console.log(`   Total Webhooks: ${orders.length}`);
       console.log(`   Successful: ${successfulWebhooks}`);
       console.log(`   Failed: ${failedWebhooks}`);
@@ -305,7 +305,7 @@ describe('Production Load Testing', () => {
       expect(failedWebhooks).toBe(0); // No webhook failures
       expect(totalWebhookTime).toBeLessThan(20000); // Process all within 20 seconds
 
-      console.log(`✅ Webhook load test passed`);
+      console.log(`[SUCCESS] Webhook load test passed`);
     }, 90000);
   });
 
@@ -315,7 +315,7 @@ describe('Production Load Testing', () => {
       
       // Measure initial memory
       const initialMemory = process.memoryUsage();
-      console.log(`📊 Initial Memory Usage: ${(initialMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`);
+      console.log(`[STATS] Initial Memory Usage: ${(initialMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`);
 
       // Dynamic imports to avoid Request/Response loading issues in Jest
       const { POST: createPaymentIntent } = await import('@/app/api/payments/create-intent/route');
@@ -362,27 +362,27 @@ describe('Production Load Testing', () => {
           // Measure memory periodically
           if (i % 5 === 0) {
             const currentMemory = process.memoryUsage();
-            console.log(`📈 Memory at iteration ${i}: ${(currentMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`);
+            console.log(`[CHART] Memory at iteration ${i}: ${(currentMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`);
           }
 
           // Small delay to prevent overwhelming
           await new Promise(resolve => setTimeout(resolve, 50));
         } catch (error) {
-          console.warn(`⚠️  Error in memory test iteration ${i}:`, error);
+          console.warn(`[WARN]  Error in memory test iteration ${i}:`, error);
         }
       }
 
       // Force garbage collection if available
       if (global.gc) {
         global.gc();
-        console.log('🗑️  Forced garbage collection');
+        console.log('[CLEANUP]  Forced garbage collection');
       }
 
       // Final memory measurement
       const finalMemory = process.memoryUsage();
       const memoryIncrease = finalMemory.heapUsed - initialMemory.heapUsed;
 
-      console.log(`📊 Memory Load Test Results:`);
+      console.log(`[STATS] Memory Load Test Results:`);
       console.log(`   Iterations Completed: ${iterations}`);
       console.log(`   Successful: ${successfulIterations}`);
       console.log(`   Initial Memory: ${(initialMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`);
@@ -393,7 +393,7 @@ describe('Production Load Testing', () => {
       expect(successfulIterations).toBeGreaterThan(iterations * 0.8); // At least 80% success
       expect(memoryIncrease).toBeLessThan(100 * 1024 * 1024); // Less than 100MB increase
       
-      console.log(`✅ Memory load test passed`);
+      console.log(`[SUCCESS] Memory load test passed`);
     }, 60000);
   });
 
@@ -402,7 +402,7 @@ describe('Production Load Testing', () => {
       // Reset rate limiting state to ensure clean test environment
       const { resetRateLimitStore } = await import('@/lib/security/rateLimit');
       resetRateLimitStore();
-      console.log('🔄 Rate limit store reset for database performance test');
+      console.log('[REDIRECT] Rate limit store reset for database performance test');
 
       const testId = `load_test_db_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
       
@@ -410,7 +410,7 @@ describe('Production Load Testing', () => {
       const orderCreationCount = 20;
       const createdOrders: string[] = [];
 
-      console.log(`🗃️  Creating ${orderCreationCount} orders for database load test`);
+      console.log(`[DATABASE]  Creating ${orderCreationCount} orders for database load test`);
 
       // Dynamic imports to avoid Request/Response loading issues in Jest
       const { POST: createPaymentIntent } = await import('@/app/api/payments/create-intent/route');
@@ -456,15 +456,15 @@ describe('Production Load Testing', () => {
             createdOrders.push(data.order.id);
           }
         } catch (error) {
-          console.warn(`⚠️  Database load test order creation failed for iteration ${i}`);
+          console.warn(`[WARN]  Database load test order creation failed for iteration ${i}`);
         }
       }
 
-      console.log(`📊 Created ${createdOrders.length} orders, testing retrieval performance`);
+      console.log(`[STATS] Created ${createdOrders.length} orders, testing retrieval performance`);
 
       // Ensure we have orders to test with (database performance test requires data)
       expect(createdOrders.length).toBeGreaterThan(0);
-      console.log(`✅ Confirmed ${createdOrders.length} orders available for database performance testing`);
+      console.log(`[SUCCESS] Confirmed ${createdOrders.length} orders available for database performance testing`);
 
       // Test order retrieval performance
       const retrievalStartTime = Date.now();
@@ -488,7 +488,7 @@ describe('Production Load Testing', () => {
       const maxRetrievalTime = retrievalResults.length > 0 ? Math.max(...retrievalResults.map(r => r.time)) : 0;
       const successfulRetrievals = retrievalResults.filter(r => r.found).length;
 
-      console.log(`🔍 Database Retrieval Performance:`);
+      console.log(`[DEBUG] Database Retrieval Performance:`);
       console.log(`   Orders Retrieved: ${successfulRetrievals}/${createdOrders.length}`);
       console.log(`   Average Retrieval Time: ${avgRetrievalTime.toFixed(2)}ms`);
       console.log(`   Max Retrieval Time: ${maxRetrievalTime}ms`);
@@ -500,7 +500,7 @@ describe('Production Load Testing', () => {
       const bulkEndTime = Date.now();
       const bulkRetrievalTime = bulkEndTime - bulkStartTime;
 
-      console.log(`📦 Bulk Retrieval Performance: ${bulkRetrievalTime}ms for ${allOrders.length} orders`);
+      console.log(`[TARGET] Bulk Retrieval Performance: ${bulkRetrievalTime}ms for ${allOrders.length} orders`);
 
       // Database performance assertions
       expect(successfulRetrievals).toBe(createdOrders.length); // All orders found
@@ -508,7 +508,7 @@ describe('Production Load Testing', () => {
       expect(maxRetrievalTime).toBeLessThan(200); // Max < 200ms
       expect(bulkRetrievalTime).toBeLessThan(1000); // Bulk < 1s
 
-      console.log(`✅ Database performance load test passed`);
+      console.log(`[SUCCESS] Database performance load test passed`);
     }, 120000);
   });
 });

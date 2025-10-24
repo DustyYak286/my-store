@@ -52,7 +52,7 @@ export class PaymentErrorBoundary extends Component<PaymentErrorBoundaryProps, P
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('💳 PaymentErrorBoundary caught an error:', {
+    console.error('[PAYMENT] PaymentErrorBoundary caught an error:', {
       error: error.message,
       stack: error.stack,
       componentStack: errorInfo.componentStack,
@@ -108,7 +108,7 @@ export class PaymentErrorBoundary extends Component<PaymentErrorBoundaryProps, P
     };
 
     // In a real implementation, you would send this to your error service
-    console.log('📊 Error report (would be sent to service):', errorReport);
+    console.log('[STATS] Error report (would be sent to service):', errorReport);
   };
 
   /**
@@ -195,7 +195,7 @@ export class PaymentErrorBoundary extends Component<PaymentErrorBoundaryProps, P
     const maxRetries = this.props.maxRetries || RETRY_CONFIG.MAX_ATTEMPTS;
     
     if (this.state.retryCount >= maxRetries) {
-      console.warn('💳 Maximum retry attempts reached');
+      console.warn('[PAYMENT] Maximum retry attempts reached');
       monitoring.recordPaymentError('max_retries_reached', {
         errorId: this.state.errorId,
         maxRetries,
@@ -211,7 +211,7 @@ export class PaymentErrorBoundary extends Component<PaymentErrorBoundaryProps, P
       RETRY_CONFIG.MAX_DELAY
     );
 
-    console.log(`💳 Retrying payment component in ${delayMs}ms (attempt ${this.state.retryCount + 1}/${maxRetries})`);
+    console.log(`[PAYMENT] Retrying payment component in ${delayMs}ms (attempt ${this.state.retryCount + 1}/${maxRetries})`);
 
     // Record retry attempt
     monitoring.recordPaymentRetry(this.state.retryCount + 1, delayMs);
@@ -396,7 +396,7 @@ export class PaymentErrorBoundary extends Component<PaymentErrorBoundaryProps, P
                 onClick={this.handleGoBack}
                 className="w-full bg-gray-100 text-gray-600 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
               >
-                ← Go Back
+                <- Go Back
               </button>
             </div>
 
@@ -414,7 +414,7 @@ export class PaymentErrorBoundary extends Component<PaymentErrorBoundaryProps, P
             {process.env.NODE_ENV === 'development' && this.state.error && (
               <details className="mt-6 text-left">
                 <summary className="cursor-pointer text-sm font-medium text-gray-700 mb-3 text-center">
-                  🔍 Technical Details (Development)
+                  [DEBUG] Technical Details (Development)
                 </summary>
                 <div className="bg-gray-100 p-4 rounded-lg text-xs space-y-3">
                   <div>

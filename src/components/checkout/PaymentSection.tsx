@@ -44,7 +44,7 @@ export default function PaymentSection({
   
   // Debug logging for cart state
   if (process.env.NODE_ENV === 'development') {
-    console.log('🔧 PaymentSection cart state:', {
+    console.log('[CONFIG] PaymentSection cart state:', {
       cartTotal,
       cartItemsCount: cartItems.length,
       cartCount,

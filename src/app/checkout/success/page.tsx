@@ -40,7 +40,7 @@ function ConversionTracking({ order, paymentIntentId }: ConversionTrackingProps)
             item_name: item.name,
             category: 'Product',
             quantity: item.quantity,
-            price: item.price,
+            price: item.unitPrice,
           })),
         });
       }
@@ -69,7 +69,7 @@ function ConversionTracking({ order, paymentIntentId }: ConversionTrackingProps)
               item_id: item.id.toString(),
               item_name: item.name,
               quantity: item.quantity,
-              price: item.price,
+              price: item.unitPrice,
             })),
           },
           payment_method: 'stripe',
@@ -78,7 +78,7 @@ function ConversionTracking({ order, paymentIntentId }: ConversionTrackingProps)
         });
       }
 
-      console.log('🎯 Conversion tracked:', {
+      console.log('[TRACK] Conversion tracked:', {
         orderId: order.id,
         orderNumber: order.orderNumber,
         amount: order.totals.total,
@@ -117,7 +117,7 @@ function OrderSummary({ order }: { order: Order }) {
               <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
             </div>
             <div className="text-sm font-medium text-gray-900">
-              {formatPrice(item.price * item.quantity, order.currency)}
+              {formatPrice(item.unitPrice * item.quantity)} {order.currency}
             </div>
           </div>
         ))}
@@ -126,30 +126,30 @@ function OrderSummary({ order }: { order: Order }) {
       <div className="border-t border-gray-200 pt-4 mt-4 space-y-2">
         <div className="flex justify-between text-sm text-gray-600">
           <span>Subtotal</span>
-          <span>{formatPrice(order.totals.subtotal, order.currency)}</span>
+          <span>{formatPrice(order.totals.subtotal)} {order.currency}</span>
         </div>
         {order.totals.discount > 0 && (
           <div className="flex justify-between text-sm text-green-600">
             <span>Discount</span>
-            <span>-{formatPrice(order.totals.discount, order.currency)}</span>
+            <span>-{formatPrice(order.totals.discount)} {order.currency}</span>
           </div>
         )}
         {order.totals.shipping > 0 && (
           <div className="flex justify-between text-sm text-gray-600">
             <span>Shipping</span>
-            <span>{formatPrice(order.totals.shipping, order.currency)}</span>
+            <span>{formatPrice(order.totals.shipping)} {order.currency}</span>
           </div>
         )}
         {order.totals.tax > 0 && (
           <div className="flex justify-between text-sm text-gray-600">
             <span>Tax</span>
-            <span>{formatPrice(order.totals.tax, order.currency)}</span>
+            <span>{formatPrice(order.totals.tax)} {order.currency}</span>
           </div>
         )}
         <div className="border-t border-gray-200 pt-2">
           <div className="flex justify-between text-base font-medium text-gray-900">
             <span>Total</span>
-            <span>{formatPrice(order.totals.total, order.currency)}</span>
+            <span>{formatPrice(order.totals.total)} {order.currency}</span>
           </div>
         </div>
       </div>
@@ -188,7 +188,7 @@ export default function PaymentSuccessPage() {
       try {
         // Production-grade order fetching via API
         const orderIdentifier = orderId || orderNumber;
-        console.log(`🔍 Fetching order via API: ${orderIdentifier}`);
+        console.log(`[DEBUG] Fetching order via API: ${orderIdentifier}`);
         
         const response = await fetch(`/api/orders/${orderIdentifier}`, {
           method: 'GET',
@@ -199,12 +199,12 @@ export default function PaymentSuccessPage() {
 
         if (!response.ok) {
           if (response.status === 404) {
-            console.log(`❌ Order not found via API: ${orderIdentifier}`);
+            console.log(`[ERROR] Order not found via API: ${orderIdentifier}`);
             setError('Order not found. Please contact support if you believe this is an error.');
           } else if (response.status === 429) {
             setError('Too many requests. Please wait a moment and refresh the page.');
           } else {
-            console.error(`❌ API error fetching order: ${response.status} ${response.statusText}`);
+            console.error(`[ERROR] API error fetching order: ${response.status} ${response.statusText}`);
             setError('Unable to load order details. Please try again or contact support.');
           }
           setLoading(false);
@@ -214,7 +214,7 @@ export default function PaymentSuccessPage() {
         const apiResult = await response.json();
         
         if (!apiResult.success) {
-          console.error(`❌ API returned error:`, apiResult.error);
+          console.error(`[ERROR] API returned error:`, apiResult.error);
           setError('Unable to load order details. Please contact support if you believe this is an error.');
           setLoading(false);
           return;
@@ -247,7 +247,7 @@ export default function PaymentSuccessPage() {
           billingAddress: apiResult.order.billingAddress || {},
         };
         
-        console.log(`✅ Order loaded via API: ${foundOrder.id} (${foundOrder.orderNumber}) - Status: ${foundOrder.status}`);
+        console.log(`[SUCCESS] Order loaded via API: ${foundOrder.id} (${foundOrder.orderNumber}) - Status: ${foundOrder.status}`);
 
         if (!foundOrder) {
           setError('Order not found. Please contact support if you believe this is an error.');
@@ -297,7 +297,7 @@ export default function PaymentSuccessPage() {
       checkAndClearIfNeeded(sessionId || undefined, orderId || undefined)
         .then(result => {
           if (result.cleared) {
-            console.log(`🧹 Cart cleared on success page: ${result.reason}`);
+            console.log(`[CLEAR] Cart cleared on success page: ${result.reason}`);
           }
         })
         .catch(err => {
@@ -432,7 +432,7 @@ export default function PaymentSuccessPage() {
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Total Amount</dt>
                     <dd className="text-lg font-semibold text-gray-900">
-                      {formatPrice(order.totals.total, order.currency)}
+                      {formatPrice(order.totals.total)} {order.currency}
                     </dd>
                   </div>
                 </dl>

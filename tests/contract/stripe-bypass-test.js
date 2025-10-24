@@ -24,7 +24,7 @@ describe('Stripe Contract Tests (Production-Grade JS)', () => {
       throw new Error('Contract tests require valid Stripe test key (sk_test_...)')
     }
 
-    console.log('🔧 Creating Stripe instance (pure JS)...')
+    console.log('[CONFIG] Creating Stripe instance (pure JS)...')
     console.log('Using Stripe key:', mask(key))
     
     stripe = new Stripe(key, {
@@ -34,7 +34,7 @@ describe('Stripe Contract Tests (Production-Grade JS)', () => {
       appInfo: { name: 'contract-tests-js', version: 'bypass' }
     })
 
-    console.log('✅ Stripe instance created with full API access')
+    console.log('[SUCCESS] Stripe instance created with full API access')
     console.log('Available APIs:', Object.keys(stripe).filter(k => typeof stripe[k] === 'object' && k !== 'options').slice(0, 8))
     console.log('Has customers API:', !!stripe.customers)
     console.log('Has paymentIntents API:', !!stripe.paymentIntents)

@@ -109,17 +109,17 @@ class MetricsRegistry {
     }
     this.webhookErrorsByType[violationType]++;
     
-    console.warn(`🚨 Webhook security violation: ${violationType}`, metadata);
+    console.warn(`[ALERT] Webhook security violation: ${violationType}`, metadata);
   }
 
   public recordWebhookRateLimitExceeded(identifier: string, metadata?: Record<string, any>): void {
     this.webhookErrorsByType['rate_limit_exceeded'] = (this.webhookErrorsByType['rate_limit_exceeded'] || 0) + 1;
-    console.warn(`⚠️ Webhook rate limit exceeded for: ${identifier}`, metadata);
+    console.warn(`[WARN] Webhook rate limit exceeded for: ${identifier}`, metadata);
   }
 
   public recordWebhookIdempotencyHit(idempotencyKey: string): void {
     this.webhookIgnoredByReason['idempotency_hit'] = (this.webhookIgnoredByReason['idempotency_hit'] || 0) + 1;
-    console.log(`🔄 Webhook idempotency hit: ${idempotencyKey}`);
+    console.log(`[REDIRECT] Webhook idempotency hit: ${idempotencyKey}`);
   }
 
   public recordWebhookSignatureInvalid(): void {
@@ -131,7 +131,7 @@ class MetricsRegistry {
     
     // Log detailed error information for debugging
     if (process.env.NODE_ENV === 'development') {
-      console.log(`📊 Payment error recorded: ${type}`, metadata);
+      console.log(`[STATS] Payment error recorded: ${type}`, metadata);
     }
   }
 
@@ -159,7 +159,7 @@ class MetricsRegistry {
     }
     
     if (process.env.NODE_ENV === 'development') {
-      console.log(`📊 Payment failure recorded: ${reason}`, {
+      console.log(`[STATS] Payment failure recorded: ${reason}`, {
         details,
         totalFailuresOfThisType: this.paymentFailureReasons[reason]
       });
@@ -181,7 +181,7 @@ class MetricsRegistry {
   public recordEvent(eventType: string, metadata: Record<string, unknown> = {}): void {
     // Generic event recording for cart clearing and other events
     if (process.env.NODE_ENV === 'development') {
-      console.log(`📊 Event recorded: ${eventType}`, metadata);
+      console.log(`[STATS] Event recorded: ${eventType}`, metadata);
     }
     
     // In a production system, this could send to an external monitoring service
@@ -194,7 +194,7 @@ class MetricsRegistry {
     this.paymentRetryCount += 1;
     
     if (process.env.NODE_ENV === 'development') {
-      console.log(`📊 Payment retry recorded: attempt ${attempt}, delay ${delayMs}ms`);
+      console.log(`[STATS] Payment retry recorded: attempt ${attempt}, delay ${delayMs}ms`);
     }
   }
 
@@ -202,7 +202,7 @@ class MetricsRegistry {
     this.webhookErrorsByType[type] = (this.webhookErrorsByType[type] || 0) + 1;
     
     if (process.env.NODE_ENV === 'development') {
-      console.log(`📊 Webhook error recorded: ${type}`, metadata);
+      console.log(`[STATS] Webhook error recorded: ${type}`, metadata);
     }
   }
 
@@ -214,7 +214,7 @@ class MetricsRegistry {
     this.webhookOrderUpdatedTotal += 1;
     
     if (process.env.NODE_ENV === 'development') {
-      console.log(`📊 Order updated via webhook: ${orderId} -> ${status} (${amount})`);
+      console.log(`[STATS] Order updated via webhook: ${orderId} -> ${status} (${amount})`);
     }
   }
 

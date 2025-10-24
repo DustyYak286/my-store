@@ -17,7 +17,7 @@ const testConfig = loadTestEnv({ mode: 'integration' });
 // Validate Stripe keys for E2E tests
 try {
   requireStripeKeys(testConfig);
-  console.log('✅ E2E environment validated with centralized config');
+  console.log('[SUCCESS] E2E environment validated with centralized config');
 } catch (error) {
   throw new Error(`E2E setup failed: ${error.message}`);
 }
@@ -30,7 +30,7 @@ const realStripeKey = testConfig.STRIPE_SECRET_KEY;
 const realPublishableKey = testConfig.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 const realWebhookSecret = testConfig.STRIPE_WEBHOOK_SECRET;
 
-console.log('🔧 E2E Environment Loading (Centralized):');
+console.log('[CONFIG] E2E Environment Loading (Centralized):');
 console.log('  Environment loaded via centralized config');
 console.log('  STRIPE_SECRET_KEY:', realStripeKey?.substring(0, 20) + '...');
 console.log('  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:', realPublishableKey?.substring(0, 20) + '...');
@@ -51,9 +51,9 @@ if (!realWebhookSecret?.startsWith('whsec_')) {
 // All validation is now handled by the centralized test environment system
 
 // Log that we're using real Stripe
-console.log('🔗 E2E Tests: Using real Stripe test API');
-console.log('🔑 Stripe Secret Key:', realStripeKey?.substring(0, 15) + '...');
-console.log('✅ E2E environment validation complete');
+console.log('[LINK] E2E Tests: Using real Stripe test API');
+console.log('[KEY] Stripe Secret Key:', realStripeKey?.substring(0, 15) + '...');
+console.log('[SUCCESS] E2E environment validation complete');
 
 // Extend timeout for real API calls
 jest.setTimeout(180000); // 3 minutes
@@ -98,7 +98,7 @@ try {
   setGlobalDispatcher(undiciDispatcher);
 } catch (error) {
   // Undici might not be available, that's fine
-  console.log('ℹ️  Undici not available for E2E, skipping dispatcher setup');
+  console.log('[INFO]  Undici not available for E2E, skipping dispatcher setup');
 }
 
 // Global test state for cleanup
@@ -112,31 +112,31 @@ try {
 
 // Enhanced cleanup function for E2E tests
 afterAll(async () => {
-  console.log('🧹 E2E Test Cleanup: Starting comprehensive cleanup...');
+  console.log('[CLEAR] E2E Test Cleanup: Starting comprehensive cleanup...');
   
   const testState = (global as any).__E2E_TEST_STATE__;
   
   try {
     // 1. Cleanup any created payment intents (optional - Stripe test mode cleans up automatically)
     if (testState.createdPaymentIntents.length > 0) {
-      console.log(`🧹 Found ${testState.createdPaymentIntents.length} payment intents to potentially cleanup`);
+      console.log(`[CLEAR] Found ${testState.createdPaymentIntents.length} payment intents to potentially cleanup`);
     }
 
     // 2. CRITICAL: Destroy Stripe HTTP agents to close keep-alive sockets
     if (testState.stripeHttpsAgent) {
       testState.stripeHttpsAgent.destroy();
-      console.log('✅ Stripe HTTPS agent destroyed');
+      console.log('[SUCCESS] Stripe HTTPS agent destroyed');
     }
     
     if (testState.stripeHttpAgent) {
       testState.stripeHttpAgent.destroy();
-      console.log('✅ Stripe HTTP agent destroyed');
+      console.log('[SUCCESS] Stripe HTTP agent destroyed');
     }
 
     // 3. Close Undici dispatcher if we set one
     if (testState.undiciDispatcher && typeof testState.undiciDispatcher.close === 'function') {
       await testState.undiciDispatcher.close();
-      console.log('✅ Undici dispatcher closed (E2E)');
+      console.log('[SUCCESS] Undici dispatcher closed (E2E)');
     }
 
     // 4. Clear webhook logger singleton state
@@ -148,14 +148,14 @@ afterAll(async () => {
       if (webhookLogger && typeof webhookLogger.clearAll === 'function') {
         webhookLogger.clearAll();
       }
-      console.log('✅ Webhook logger cleaned up');
+      console.log('[SUCCESS] Webhook logger cleaned up');
     } catch (error) {
-      console.log('ℹ️  Webhook logger cleanup not needed');
+      console.log('[INFO]  Webhook logger cleanup not needed');
     }
 
-    console.log('✅ E2E Test Cleanup: Comprehensive cleanup complete');
+    console.log('[SUCCESS] E2E Test Cleanup: Comprehensive cleanup complete');
   } catch (error) {
-    console.error('❌ Error during E2E cleanup:', error);
+    console.error('[ERROR] Error during E2E cleanup:', error);
   }
 });
 

@@ -381,7 +381,7 @@ export function markSuspiciousActivity(
   record.suspiciousActivity = true;
   requestStore.set(clientKey, record);
 
-  console.warn(`🚨 Marked client as suspicious: ${clientKey} - Reason: ${reason}`);
+  console.warn(`[ALERT] Marked client as suspicious: ${clientKey} - Reason: ${reason}`);
 }
 
 /**

@@ -94,7 +94,7 @@ function validateInitializeRequest(data: InitializePaymentIntentRequest): {
   
   // Validate each item
   data.items?.forEach((item, index) => {
-    if (!item.id || item.id <= 0) {
+    if (!item.id || (typeof item.id === 'number' && item.id <= 0)) {
       errors.push(`Item ${index + 1}: Valid product ID is required`);
     }
     if (!item.name) {
@@ -167,12 +167,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<Initializ
   const stopApiTimer = monitoring.startTimer('api.initialize_intent');
   
   try {
-    console.log(`🔄 Payment intent initialization started - Request ID: ${requestId}`);
+    console.log(`[REDIRECT] Payment intent initialization started - Request ID: ${requestId}`);
     
     // Basic security validation
     const rateLimitResult = checkMultiTierRateLimit(request);
     if (!rateLimitResult.allowed) {
-      console.warn(`⚠️ Rate limit exceeded - Request ID: ${requestId}`);
+      console.warn(`[WARN] Rate limit exceeded - Request ID: ${requestId}`);
       return NextResponse.json({
         success: false,
         error: {
@@ -190,7 +190,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Initializ
     // Header validation
     const headerValidation = validateRequestHeaders(request);
     if (!headerValidation.isValid) {
-      console.error('❌ Header validation failed:', headerValidation.threats);
+      console.error('[ERROR] Header validation failed:', headerValidation.threats);
       return NextResponse.json({
         success: false,
         error: {
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Initializ
     if (clientIp) {
       const ipValidation = validateClientIP(clientIp);
       if (!ipValidation.isValid) {
-        console.warn('⚠️ Invalid IP format:', clientIp);
+        console.warn('[WARN] Invalid IP format:', clientIp);
       }
     }
     
@@ -216,7 +216,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Initializ
     try {
       requestData = await request.json();
     } catch (parseError) {
-      console.error(`❌ JSON parsing failed - Request ID: ${requestId}:`, parseError);
+      console.error(`[ERROR] JSON parsing failed - Request ID: ${requestId}:`, parseError);
       return NextResponse.json({
         success: false,
         error: {
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Initializ
     // Validate request data
     const validation = validateInitializeRequest(requestData);
     if (!validation.isValid) {
-      console.warn(`⚠️ Validation failed - Request ID: ${requestId}:`, validation.errors);
+      console.warn(`[WARN] Validation failed - Request ID: ${requestId}:`, validation.errors);
       return NextResponse.json({
         success: false,
         error: {
@@ -248,7 +248,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Initializ
     const totalInRON = calculateCartTotal(requestData.items);
     const amountValidation = validatePaymentAmount(totalInRON);
     if (!amountValidation.isValid) {
-      console.warn(`⚠️ Amount validation failed - Request ID: ${requestId}:`, amountValidation.error);
+      console.warn(`[WARN] Amount validation failed - Request ID: ${requestId}:`, amountValidation.error);
       return NextResponse.json({
         success: false,
         error: {
@@ -275,7 +275,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Initializ
     const totalWithTaxInBani = subtotalInBani + taxInBani;
     const totalWithTaxInRON = totalInRON * (1 + taxRate);
     
-    console.log(`✅ Amount validation passed - Request ID: ${requestId}: ${totalInRON} RON (${totalWithTaxInBani} bani with tax)`);
+    console.log(`[SUCCESS] Amount validation passed - Request ID: ${requestId}: ${totalInRON} RON (${totalWithTaxInBani} bani with tax)`);
     
     // Create order draft with minimum required information
     const orderRequest: CreateOrderRequest = {
@@ -312,11 +312,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<Initializ
       },
     };
     
-    console.log(`🔄 Creating order draft - Request ID: ${requestId}`);
+    console.log(`[REDIRECT] Creating order draft - Request ID: ${requestId}`);
     const orderResult = createOrder(orderRequest);
     
     if (orderResult.validationErrors) {
-      console.error(`❌ Order draft creation failed - Request ID: ${requestId}:`, orderResult.validationErrors);
+      console.error(`[ERROR] Order draft creation failed - Request ID: ${requestId}:`, orderResult.validationErrors);
       return NextResponse.json({
         success: false,
         error: {
@@ -330,11 +330,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<Initializ
     }
     
     const orderDraft = orderResult.order;
-    console.log(`✅ Order draft created - Order ID: ${orderDraft.id}, Request ID: ${requestId}`);
+    console.log(`[SUCCESS] Order draft created - Order ID: ${orderDraft.id}, Request ID: ${requestId}`);
     
     // Store the order draft
     storeOrder(orderDraft);
-    console.log(`✅ Order draft stored - Order ID: ${orderDraft.id}`);
+    console.log(`[SUCCESS] Order draft stored - Order ID: ${orderDraft.id}`);
     
     // Generate idempotency key for Stripe
     const idempotencyKey = generateIdempotencyKey(requestData);
@@ -372,14 +372,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<Initializ
       webhookVersion: '1.0',
     };
     
-    console.log(`🔄 Creating Stripe payment intent for initialization - Request ID: ${requestId}`);
+    console.log(`[REDIRECT] Creating Stripe payment intent for initialization - Request ID: ${requestId}`);
     
     // Create payment intent
     const stopStripeTimer = monitoring.startTimer('stripe.initialize_payment_intent');
     const paymentIntent = await stripeOperations.createPaymentIntent(paymentIntentParams);
     stopStripeTimer();
     
-    console.log(`✅ Payment intent initialized - PI ID: ${paymentIntent.id}, Request ID: ${requestId}`);
+    console.log(`[SUCCESS] Payment intent initialized - PI ID: ${paymentIntent.id}, Request ID: ${requestId}`);
     
     // Return successful response with order draft information
     const response: InitializePaymentIntentResponse = {
@@ -403,7 +403,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Initializ
       },
     };
     
-    console.log(`✅ Payment intent initialization completed - Request ID: ${requestId}`);
+    console.log(`[SUCCESS] Payment intent initialization completed - Request ID: ${requestId}`);
     
     return NextResponse.json(response, {
       status: 200,
@@ -416,7 +416,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Initializ
     });
     
   } catch (error) {
-    console.error(`❌ Payment intent initialization failed - Request ID: ${requestId}:`, error);
+    console.error(`[ERROR] Payment intent initialization failed - Request ID: ${requestId}:`, error);
     
     // Handle Stripe-specific errors
     if (error && typeof error === 'object' && 'type' in error) {

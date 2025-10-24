@@ -139,7 +139,7 @@ export class ConsoleEmailProvider implements EmailProvider {
     const timestamp = new Date().toISOString();
     
     try {
-      console.log('📧 Email would be sent:', {
+      console.log('[EMAIL] Email would be sent:', {
         to: request.to,
         subject: request.subject,
         template: request.template,
@@ -148,7 +148,7 @@ export class ConsoleEmailProvider implements EmailProvider {
         timestamp,
       });
       
-      console.log('📄 Template data:', request.templateData);
+      console.log('[TEMPLATE] Template data:', request.templateData);
       
       return {
         success: true,
@@ -205,7 +205,7 @@ export class EmailService {
     try {
       // Check if emails are enabled
       if (!this.config.enabled) {
-        console.log('📧 Email sending disabled, would send:', request.subject);
+        console.log('[EMAIL] Email sending disabled, would send:', request.subject);
         return {
           success: true,
           emailId: 'disabled',
@@ -217,7 +217,7 @@ export class EmailService {
       // Check if template is enabled
       const templateConfig = this.config.templates[request.template];
       if (!templateConfig?.enabled) {
-        console.log(`📧 Email template ${request.template} disabled, would send:`, request.subject);
+        console.log(`[EMAIL] Email template ${request.template} disabled, would send:`, request.subject);
         return {
           success: true,
           emailId: 'template_disabled',
@@ -299,7 +299,7 @@ export class EmailService {
 
     this.queue.set(queueId, queueEntry);
 
-    console.log(`📧 Email queued: ${queueId} (${request.template})`);
+    console.log(`[EMAIL] Email queued: ${queueId} (${request.template})`);
 
     return queueId;
   }
@@ -350,7 +350,7 @@ export class EmailService {
 
     const cleared = sizeBefore - this.queue.size;
     if (cleared > 0) {
-      console.log(`📧 Cleared ${cleared} completed email queue entries`);
+      console.log(`[EMAIL] Cleared ${cleared} completed email queue entries`);
     }
 
     return cleared;
@@ -457,7 +457,7 @@ export function initializeEmailService(config: Partial<EmailConfig>): void {
   // Replace the default service
   Object.assign(emailService, newService);
   
-  console.log('📧 Email service initialized with config:', {
+  console.log('[EMAIL] Email service initialized with config:', {
     enabled: config.enabled ?? DEFAULT_EMAIL_CONFIG.enabled,
     provider: config.provider ?? DEFAULT_EMAIL_CONFIG.provider,
   });

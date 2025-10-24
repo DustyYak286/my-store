@@ -172,7 +172,7 @@ async function clearCartBySession(
       cleanupExpiredClearingInstructions();
     }
 
-    console.log(`📦 Cart clearing instruction stored for session: ${sessionId}, order: ${orderId}`);
+    console.log(`[TARGET] Cart clearing instruction stored for session: ${sessionId}, order: ${orderId}`);
     
     return { success: true };
     
@@ -217,7 +217,7 @@ async function clearCartByOrder(
       cleanupExpiredClearingInstructions();
     }
 
-    console.log(`📦 Cart clearing instruction stored for order: ${orderId}`);
+    console.log(`[TARGET] Cart clearing instruction stored for order: ${orderId}`);
     
     return { success: true };
     

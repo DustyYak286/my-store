@@ -40,7 +40,7 @@ export interface ErrorInfo {
 }
 
 // Toast/Notification types
-export type ToastType = 'success' | 'error' | 'info' | 'warning'
+export type ToastType = 'success' | 'error' | 'info' | 'warning' | 'loading'
 
 export interface Toast {
   id?: string

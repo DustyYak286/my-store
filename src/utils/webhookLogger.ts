@@ -624,11 +624,11 @@ export class WebhookLogger {
 
   private outputToConsole(entry: WebhookLogEntry): void {
     const emoji = {
-      [LogLevel.DEBUG]: '🔍',
-      [LogLevel.INFO]: 'ℹ️',
-      [LogLevel.WARN]: '⚠️',
-      [LogLevel.ERROR]: '❌',
-      [LogLevel.CRITICAL]: '🚨',
+      [LogLevel.DEBUG]: '[DEBUG]',
+      [LogLevel.INFO]: '[INFO]',
+      [LogLevel.WARN]: '[WARN]',
+      [LogLevel.ERROR]: '[ERROR]',
+      [LogLevel.CRITICAL]: '[ALERT]',
     };
 
     const prefix = `${emoji[entry.level]} [${entry.timestamp}]`;

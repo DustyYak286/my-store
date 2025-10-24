@@ -12,6 +12,7 @@ import { getOrderById, getOrderByNumber } from '@/lib/orderStore';
 import { validateRequestHeaders } from '@/lib/security/validation';
 import { checkMultiTierRateLimit, getRateLimitHeaders } from '@/lib/security/rateLimit';
 import { monitoring } from '@/utils/monitoring';
+import type { ID } from '@/types/common';
 
 // ====== RESPONSE INTERFACES ======
 
@@ -29,7 +30,7 @@ interface OrderRetrievalSuccessResponse {
     };
     currency: string;
     items: Array<{
-      id: number;
+      id: ID;
       name: string;
       quantity: number;
       price: number;
@@ -37,8 +38,8 @@ interface OrderRetrievalSuccessResponse {
     }>;
     customerInfo?: {
       email: string;
-      firstName: string;
-      lastName: string;
+      firstName?: string;
+      lastName?: string;
     };
     payment?: {
       paymentIntentId?: string;
@@ -86,12 +87,12 @@ export async function GET(
   try {
     // Await params as required by Next.js 15
     const { id } = await params;
-    console.log(`🔍 Order retrieval started - Order ID: ${id}, Request ID: ${requestId}`);
+    console.log(`[DEBUG] Order retrieval started - Order ID: ${id}, Request ID: ${requestId}`);
     
     // Basic security validation
     const rateLimitResult = checkMultiTierRateLimit(request);
     if (!rateLimitResult.allowed) {
-      console.warn(`⚠️ Rate limit exceeded - Request ID: ${requestId}`);
+      console.warn(`[WARN] Rate limit exceeded - Request ID: ${requestId}`);
       return NextResponse.json({
         success: false,
         error: {
@@ -109,7 +110,7 @@ export async function GET(
     // Header validation
     const headerValidation = validateRequestHeaders(request);
     if (!headerValidation.isValid) {
-      console.error('❌ Header validation failed:', headerValidation.threats);
+      console.error('[ERROR] Header validation failed:', headerValidation.threats);
       return NextResponse.json({
         success: false,
         error: {
@@ -123,7 +124,7 @@ export async function GET(
     
     // Validate order ID parameter
     if (!id || typeof id !== 'string' || id.trim().length === 0) {
-      console.error(`❌ Invalid order ID parameter - Request ID: ${requestId}`);
+      console.error(`[ERROR] Invalid order ID parameter - Request ID: ${requestId}`);
       return NextResponse.json({
         success: false,
         error: {
@@ -136,18 +137,18 @@ export async function GET(
     }
     
     const orderId = id.trim();
-    console.log(`🔍 Looking for order: ${orderId}`);
+    console.log(`[DEBUG] Looking for order: ${orderId}`);
     
     // Try to find order by ID first, then by order number
     let order = getOrderById(orderId);
     
     if (!order) {
-      console.log(`🔍 Order not found by ID, trying order number: ${orderId}`);
+      console.log(`[DEBUG] Order not found by ID, trying order number: ${orderId}`);
       order = getOrderByNumber(orderId);
     }
     
     if (!order) {
-      console.log(`❌ Order not found - Order ID: ${orderId}, Request ID: ${requestId}`);
+      console.log(`[ERROR] Order not found - Order ID: ${orderId}, Request ID: ${requestId}`);
       return NextResponse.json({
         success: false,
         error: {
@@ -159,7 +160,7 @@ export async function GET(
       }, { status: 404 });
     }
     
-    console.log(`✅ Order found - Order ID: ${order.id} (${order.orderNumber}), Status: ${order.status}, Request ID: ${requestId}`);
+    console.log(`[SUCCESS] Order found - Order ID: ${order.id} (${order.orderNumber}), Status: ${order.status}, Request ID: ${requestId}`);
     
     // Transform order to API response format
     const response: OrderRetrievalSuccessResponse = {
@@ -179,21 +180,25 @@ export async function GET(
           id: item.id,
           name: item.name,
           quantity: item.quantity,
-          price: item.price,
-          image: item.image,
+          price: item.unitPrice,
+          ...(item.image ? { image: item.image } : {}),
         })),
-        customerInfo: order.customerInfo ? {
-          email: order.customerInfo.email,
-          firstName: order.customerInfo.firstName,
-          lastName: order.customerInfo.lastName,
-        } : undefined,
-        payment: order.payment ? {
-          paymentIntentId: order.payment.paymentIntentId,
-          amount: order.payment.amount,
-          capturedAt: order.payment.capturedAt,
-        } : undefined,
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt,
+        ...(order.customerInfo ? {
+          customerInfo: {
+            email: order.customerInfo.email,
+            ...(order.customerInfo.firstName ? { firstName: order.customerInfo.firstName } : {}),
+            ...(order.customerInfo.lastName ? { lastName: order.customerInfo.lastName } : {}),
+          }
+        } : {}),
+        ...(order.payment ? {
+          payment: {
+            ...(order.payment.paymentIntentId ? { paymentIntentId: order.payment.paymentIntentId } : {}),
+            amount: order.payment.amount,
+            ...(order.payment.capturedAt ? { capturedAt: order.payment.capturedAt } : {}),
+          }
+        } : {}),
+        createdAt: order.timestamps.createdAt,
+        updatedAt: order.timestamps.updatedAt,
       },
       metadata: {
         environment: process.env.NODE_ENV || 'development',
@@ -201,7 +206,7 @@ export async function GET(
       },
     };
     
-    console.log(`✅ Order retrieval completed - Order ID: ${order.id}, Request ID: ${requestId}`);
+    console.log(`[SUCCESS] Order retrieval completed - Order ID: ${order.id}, Request ID: ${requestId}`);
     
     return NextResponse.json(response, {
       status: 200,
@@ -214,7 +219,7 @@ export async function GET(
     });
     
   } catch (error) {
-    console.error(`❌ Order retrieval failed - Request ID: ${requestId}:`, error);
+    console.error(`[ERROR] Order retrieval failed - Request ID: ${requestId}:`, error);
     
     return NextResponse.json({
       success: false,

@@ -137,7 +137,7 @@ export class EmailTemplateRenderer {
 </head>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
     <div style="background-color: #2563eb; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-        <h1 style="margin: 0;">✅ Order Confirmed!</h1>
+        <h1 style="margin: 0;">[SUCCESS] Order Confirmed!</h1>
         <p style="margin: 10px 0 0 0;">Thank you for your order, {{customerName}}</p>
     </div>
     
@@ -203,7 +203,7 @@ export class EmailTemplateRenderer {
 </head>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
     <div style="background-color: #dc2626; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-        <h1 style="margin: 0;">⚠️ Payment Issue</h1>
+        <h1 style="margin: 0;">[WARN] Payment Issue</h1>
         <p style="margin: 10px 0 0 0;">Hi {{customerName}}, we had trouble processing your payment</p>
     </div>
     
@@ -252,7 +252,7 @@ export class EmailTemplateRenderer {
 </head>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
     <div style="background-color: #0891b2; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-        <h1 style="margin: 0;">📦 Order Shipped!</h1>
+        <h1 style="margin: 0;">[TARGET] Order Shipped!</h1>
         <p style="margin: 10px 0 0 0;">Your order is on its way, {{customerName}}</p>
     </div>
     
