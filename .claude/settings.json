@@ -1,0 +1,21 @@
+{
+  "project": {
+    "type": "nextjs",
+    "package_manager": "npm",
+    "test_command": "npm run test",
+    "lint_command": "npm run lint",
+    "build_command": "npm run build",
+    "dev_command": "npm run dev"
+  },
+  "code_style": {
+    "prefer_typescript": true,
+    "indent_size": 2,
+    "max_line_length": 100,
+    "prefer_arrow_functions": true,
+    "prefer_const": true
+  },
+  "behavior": {
+    "prefer_edit_over_write": true,
+    "auto_run_tests": false
+  }
+}

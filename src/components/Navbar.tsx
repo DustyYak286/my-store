@@ -3,21 +3,22 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ShoppingCart } from "lucide-react";
-import { useState } from "react";
+import { forwardRef } from "react";
 import { usePathname } from "next/navigation";
 import CartModal from "./CartModal";
 import { useCart } from "@/context/CartContext";
+import { useCartModal } from "@/context/CartModalContext";
 
-const Navbar = () => {
-  const [cartOpen, setCartOpen] = useState(false);
+const Navbar = forwardRef<HTMLElement>((props, ref) => {
   const { cartCount } = useCart();
+  const { isCartOpen, openCart, closeCart } = useCartModal();
   const pathname = usePathname();
   
   // Hide navigation buttons on checkout page
   const isCheckoutPage = pathname === '/checkout';
 
   return (
-    <nav className="w-full bg-analenn-primary px-6 py-4">
+    <nav ref={ref} className="w-full bg-analenn-primary px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Left: Logo and Brand Name */}
         <Link href="/" className="flex items-center">
@@ -55,7 +56,7 @@ const Navbar = () => {
               Reviews
             </a>
             <button
-              onClick={() => setCartOpen(true)}
+              onClick={openCart}
               className="relative ml-4 focus:outline-none"
               aria-label="Open cart"
             >
@@ -69,9 +70,9 @@ const Navbar = () => {
           </div>
         )}
       </div>
-      <CartModal open={cartOpen} onClose={() => setCartOpen(false)} />
+      <CartModal open={isCartOpen} onClose={closeCart} />
     </nav>
   );
-};
+});
 
 export default Navbar;

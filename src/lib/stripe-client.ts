@@ -1,0 +1,780 @@
+/**
+ * Client-Side Stripe Instance and Utilities
+ * 
+ * Provides Stripe.js integration for client-side payment processing
+ * including Elements setup, payment confirmation, and error handling.
+ */
+
+'use client';
+
+import { loadStripe, StripeElements, StripeError } from '@stripe/stripe-js';
+import type { Stripe, PaymentIntent } from '@stripe/stripe-js';
+import { clientStripeConfig } from '@/config/stripe-client';
+
+// Extend Window interface for Apple Pay
+declare global {
+  interface Window {
+    ApplePaySession?: {
+      canMakePayments?: () => boolean;
+    };
+  }
+}
+
+// ====== STRIPE INSTANCE ======
+
+let stripePromise: Promise<Stripe | null> | null = null;
+
+/**
+ * Get or create the client-side Stripe instance
+ * Implements singleton pattern with promise caching
+ * @returns Promise that resolves to Stripe instance
+ */
+export const getStripe = async (): Promise<Stripe | null> => {
+  if (!stripePromise) {
+    // Validate publishable key before attempting to load Stripe
+    if (!clientStripeConfig.publishableKey) {
+      console.error('[ERROR] Cannot load Stripe: publishableKey is empty');
+      console.error('Environment variable NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:', process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'UNDEFINED');
+      return null;
+    }
+
+    if (!clientStripeConfig.publishableKey.startsWith('pk_')) {
+      console.error('[ERROR] Cannot load Stripe: invalid publishableKey format');
+      console.error('Key:', clientStripeConfig.publishableKey.substring(0, 20) + '...');
+      return null;
+    }
+
+    console.log('[REDIRECT] Loading Stripe with publishable key:', clientStripeConfig.publishableKey.substring(0, 20) + '...');
+    
+    stripePromise = loadStripe(clientStripeConfig.publishableKey, {
+      // apiVersion: clientStripeConfig.apiVersion, // Use default API version
+      locale: clientStripeConfig.locale,
+    }).catch(error => {
+      console.error('[ERROR] Stripe loading failed:', error);
+      return null;
+    });
+  }
+  
+  return stripePromise;
+};
+
+// ====== ELEMENTS UTILITIES ======
+
+/**
+ * Client-side payment confirmation with comprehensive error handling
+ * @param stripe Stripe instance
+ * @param elements Elements instance
+ * @param clientSecret Payment intent client secret
+ * @param confirmationData Additional confirmation data
+ * @returns Payment confirmation result
+ */
+export const confirmPayment = async (
+  stripe: Stripe,
+  elements: StripeElements,
+  clientSecret: string,
+  confirmationData?: {
+    return_url?: string;
+    payment_method_data?: {
+      billing_details?: {
+        name?: string;
+        email?: string;
+        address?: {
+          line1?: string;
+          line2?: string;
+          city?: string;
+          state?: string;
+          postal_code?: string;
+          country?: string;
+        };
+      };
+    };
+  }
+): Promise<{
+  success: boolean;
+  paymentIntent?: PaymentIntent;
+  error?: {
+    type: string;
+    code?: string | undefined;
+    message: string;
+    category: 'card' | 'authentication' | 'network' | 'validation' | 'unknown';
+    isRetryable: boolean;
+  };
+}> => {
+  try {
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      clientSecret,
+      confirmParams: {
+        return_url: confirmationData?.return_url || window.location.origin + '/checkout/success',
+        ...(confirmationData?.payment_method_data && { payment_method_data: confirmationData.payment_method_data }),
+      },
+      redirect: 'if_required',
+    });
+    
+    if (error) {
+      const categorizedError = categorizeClientStripeError(error);
+      
+      console.warn('[WARN] Payment confirmation failed:', {
+        type: error.type,
+        code: error.code,
+        message: error.message,
+        category: categorizedError.category,
+      });
+      
+      return {
+        success: false,
+        error: {
+          type: error.type,
+          code: error.code,
+          message: categorizedError.userMessage,
+          category: categorizedError.category,
+          isRetryable: categorizedError.isRetryable,
+        },
+      };
+    }
+    
+    if (paymentIntent && paymentIntent.status === 'succeeded') {
+      console.log('[SUCCESS] Payment confirmed successfully:', {
+        paymentIntentId: paymentIntent.id,
+        status: paymentIntent.status,
+        amount: paymentIntent.amount,
+      });
+      
+      return {
+        success: true,
+        paymentIntent,
+      };
+    }
+    
+    // Handle other payment intent statuses
+    const statusMessage = getPaymentIntentStatusMessage(paymentIntent?.status);
+    return {
+      success: false,
+      error: {
+        type: 'payment_intent_status',
+        message: statusMessage,
+        category: 'unknown',
+        isRetryable: false,
+      },
+    };
+    
+  } catch (error) {
+    console.error('[ERROR] Payment confirmation error:', error);
+    
+    return {
+      success: false,
+      error: {
+        type: 'network_error',
+        message: 'Network error occurred. Please check your connection and try again.',
+        category: 'network',
+        isRetryable: true,
+      },
+    };
+  }
+};
+
+/**
+ * Process 3D Secure authentication redirect
+ * @param stripe Stripe instance
+ * @param clientSecret Payment intent client secret
+ * @returns Authentication result
+ */
+export const handleNextAction = async (
+  stripe: Stripe,
+  clientSecret: string
+): Promise<{
+  success: boolean;
+  paymentIntent?: PaymentIntent;
+  error?: {
+    type: string;
+    code?: string | undefined;
+    message: string;
+    category: string;
+  };
+}> => {
+  try {
+    const { error, paymentIntent } = await stripe.handleNextAction({
+      clientSecret,
+    });
+    
+    if (error) {
+      const categorizedError = categorizeClientStripeError(error);
+      
+      return {
+        success: false,
+        error: {
+          type: error.type,
+          code: error.code,
+          message: categorizedError.userMessage,
+          category: categorizedError.category,
+        },
+      };
+    }
+    
+    return {
+      success: true,
+      ...(paymentIntent && { paymentIntent }),
+    };
+    
+  } catch (error) {
+    console.error('[ERROR] Next action handling error:', error);
+    
+    return {
+      success: false,
+      error: {
+        type: 'network_error',
+        message: 'Authentication failed. Please try again.',
+        category: 'network',
+      },
+    };
+  }
+};
+
+// ====== ERROR HANDLING ======
+
+/**
+ * Enhanced categorization of client-side Stripe errors with specific scenario handling
+ * @param error Stripe error from client-side operations
+ * @returns Error category and user-friendly information
+ */
+export const categorizeClientStripeError = (error: StripeError): {
+  category: 'card' | 'authentication' | 'network' | 'validation' | 'rate_limit' | 'unknown';
+  isRetryable: boolean;
+  userMessage: string;
+  severity: 'low' | 'medium' | 'high';
+  retryDelay?: number;
+  maxRetries?: number;
+  subCategory?: string;
+} => {
+  const { type, code, message } = error;
+  
+  // Card errors - distinguish between declined vs failed
+  if (type === 'card_error') {
+    // Declined cards (issuer-side rejections) - not retryable
+    const declinedCodes = [
+      'card_declined', 'insufficient_funds', 'expired_card', 
+      'lost_card', 'stolen_card', 'pickup_card', 'restricted_card',
+      'security_violation', 'service_not_allowed', 'transaction_not_allowed'
+    ];
+    
+    // Processing errors (temporary issues) - retryable
+    const processingCodes = [
+      'processing_error', 'issuer_not_available', 'reenter_transaction',
+      'try_again_later', 'do_not_honor', 'generic_decline'
+    ];
+    
+    // Validation errors (user fixable) - retryable with user action
+    const validationCodes = [
+      'incorrect_cvc', 'incorrect_number', 'incorrect_zip',
+      'invalid_cvc', 'invalid_expiry_month', 'invalid_expiry_year',
+      'invalid_number', 'missing', 'parameter_invalid_empty',
+      'parameter_invalid_integer', 'parameter_invalid_string_empty'
+    ];
+    
+    if (declinedCodes.includes(code || '')) {
+      const declinedMessages: Record<string, string> = {
+        'card_declined': 'Your card was declined by your bank. Please try a different payment method.',
+        'insufficient_funds': 'Insufficient funds. Please check your account balance or try a different card.',
+        'expired_card': 'Your card has expired. Please use a different card.',
+        'lost_card': 'This card has been reported as lost. Please use a different payment method.',
+        'stolen_card': 'This card has been reported as stolen. Please use a different payment method.',
+        'pickup_card': 'Your card cannot be used for online payments. Please try a different card.',
+        'restricted_card': 'Your card has restrictions that prevent this payment. Please try a different card.',
+        'security_violation': 'Payment blocked for security reasons. Please contact your bank or try a different card.',
+      };
+      
+      return {
+        category: 'card',
+        subCategory: 'declined',
+        isRetryable: false,
+        userMessage: declinedMessages[code || ''] || 'Your card was declined. Please try a different payment method.',
+        severity: 'medium',
+      };
+    }
+    
+    if (processingCodes.includes(code || '')) {
+      const processingMessages: Record<string, string> = {
+        'processing_error': 'Temporary processing error. Please try again in a moment.',
+        'issuer_not_available': 'Your bank is temporarily unavailable. Please try again.',
+        'reenter_transaction': 'Please try your payment again.',
+        'try_again_later': 'Temporary issue with your card. Please try again in a few minutes.',
+        'do_not_honor': 'Payment declined by your bank. This is often temporary - please try again.',
+        'generic_decline': 'Payment temporarily declined. Please try again or use a different card.',
+      };
+      
+      return {
+        category: 'card',
+        subCategory: 'processing_error',
+        isRetryable: true,
+        userMessage: processingMessages[code || ''] || 'Temporary card processing error. Please try again.',
+        severity: 'medium',
+        retryDelay: 2000, // 2 second delay for processing errors
+        maxRetries: 2,
+      };
+    }
+    
+    if (validationCodes.includes(code || '')) {
+      const validationMessages: Record<string, string> = {
+        'incorrect_cvc': 'Your card\'s security code (CVC) is incorrect. Please check and try again.',
+        'incorrect_number': 'Your card number is incorrect. Please check and try again.',
+        'incorrect_zip': 'Your postal/ZIP code doesn\'t match your card. Please check and try again.',
+        'invalid_cvc': 'Please enter a valid security code (CVC).',
+        'invalid_expiry_month': 'Please enter a valid expiry month.',
+        'invalid_expiry_year': 'Please enter a valid expiry year.',
+        'invalid_number': 'Please enter a valid card number.',
+      };
+      
+      return {
+        category: 'validation',
+        subCategory: 'card_validation',
+        isRetryable: true,
+        userMessage: validationMessages[code || ''] || 'Please check your card information and try again.',
+        severity: 'low',
+      };
+    }
+    
+    // Fallback for other card errors
+    return {
+      category: 'card',
+      subCategory: 'unknown',
+      isRetryable: code === 'processing_error',
+      userMessage: 'Card payment failed. Please check your information or try a different card.',
+      severity: 'medium',
+    };
+  }
+  
+  // Validation errors - usually user input issues
+  if (type === 'validation_error') {
+    return {
+      category: 'validation',
+      isRetryable: true,
+      userMessage: 'Please check your payment information and try again.',
+      severity: 'low',
+    };
+  }
+  
+  // API connection errors - enhanced network timeout handling
+  if (type === 'api_connection_error') {
+    // Detect timeout vs connection issues
+    const isTimeout = message?.toLowerCase().includes('timeout') || 
+                     message?.toLowerCase().includes('timed out');
+    
+    if (isTimeout) {
+      return {
+        category: 'network',
+        subCategory: 'timeout',
+        isRetryable: true,
+        userMessage: 'Connection timed out. Please check your internet and try again.',
+        severity: 'medium',
+        retryDelay: 3000, // 3 second delay for timeouts
+        maxRetries: 3,
+      };
+    }
+    
+    return {
+      category: 'network',
+      subCategory: 'connection_error',
+      isRetryable: true,
+      userMessage: 'Network connection error. Please check your internet and try again.',
+      severity: 'medium',
+      retryDelay: 2000,
+      maxRetries: 3,
+    };
+  }
+  
+  // API errors - distinguish server vs client issues
+  if (type === 'api_error') {
+    // Check for specific server error patterns
+    const isServerOverload = message?.includes('503') || 
+                            message?.toLowerCase().includes('service unavailable') ||
+                            message?.toLowerCase().includes('temporarily unavailable');
+    
+    const isInternalError = message?.includes('500') ||
+                           message?.toLowerCase().includes('internal server error');
+    
+    if (isServerOverload) {
+      return {
+        category: 'network',
+        subCategory: 'server_overload',
+        isRetryable: true,
+        userMessage: 'Payment service is busy. Please try again in a moment.',
+        severity: 'high',
+        retryDelay: 10000, // 10 second delay for server overload
+        maxRetries: 2,
+      };
+    }
+    
+    if (isInternalError) {
+      return {
+        category: 'network',
+        subCategory: 'server_error',
+        isRetryable: true,
+        userMessage: 'Payment service error. Please try again.',
+        severity: 'high',
+        retryDelay: 5000, // 5 second delay for server errors
+        maxRetries: 2,
+      };
+    }
+    
+    return {
+      category: 'network',
+      subCategory: 'api_error',
+      isRetryable: true,
+      userMessage: 'Payment service temporarily unavailable. Please try again.',
+      severity: 'high',
+      retryDelay: 3000,
+      maxRetries: 2,
+    };
+  }
+  
+  // Authentication errors - enhanced 3D Secure handling
+  if (type === 'authentication_error') {
+    // Specific 3D Secure error handling
+    if (message?.toLowerCase().includes('3d secure') || 
+        message?.toLowerCase().includes('authentication') ||
+        code === 'authentication_required') {
+      return {
+        category: 'authentication',
+        subCategory: '3d_secure_failed',
+        isRetryable: true,
+        userMessage: 'Card authentication failed. Please verify with your bank and try again.',
+        severity: 'medium',
+        retryDelay: 3000, // 3 second delay for auth retries
+        maxRetries: 2,
+      };
+    }
+    
+    return {
+      category: 'authentication',
+      subCategory: 'general_auth_error',
+      isRetryable: true,
+      userMessage: 'Payment authentication failed. Please try again.',
+      severity: 'medium',
+      retryDelay: 2000,
+      maxRetries: 2,
+    };
+  }
+  
+  // Rate limit errors - intelligent retry delays
+  if (type === 'rate_limit_error') {
+    return {
+      category: 'rate_limit',
+      subCategory: 'api_rate_limit',
+      isRetryable: true,
+      userMessage: 'Too many payment attempts. Please wait a moment and try again.',
+      severity: 'medium',
+      retryDelay: 5000, // 5 second base delay for rate limits
+      maxRetries: 2,
+    };
+  }
+  
+  // Invalid request errors
+  if (type === 'invalid_request_error') {
+    return {
+      category: 'validation',
+      isRetryable: false,
+      userMessage: 'Invalid payment request. Please refresh the page and try again.',
+      severity: 'high',
+    };
+  }
+  
+  // Browser-specific payment method errors
+  if (message?.toLowerCase().includes('payment method not available') ||
+      message?.toLowerCase().includes('apple pay') ||
+      message?.toLowerCase().includes('google pay')) {
+    return {
+      category: 'validation',
+      subCategory: 'payment_method_unavailable',
+      isRetryable: false,
+      userMessage: 'This payment method is not available. Please try card payment instead.',
+      severity: 'low',
+    };
+  }
+  
+  // Handle payment intent creation failures
+  if (message?.toLowerCase().includes('payment intent') ||
+      message?.toLowerCase().includes('intent creation')) {
+    return {
+      category: 'network',
+      subCategory: 'payment_intent_error',
+      isRetryable: true,
+      userMessage: 'Failed to initialize payment. Please try again.',
+      severity: 'medium',
+      retryDelay: 2000,
+      maxRetries: 2,
+    };
+  }
+  
+  // Unknown errors with enhanced context
+  return {
+    category: 'unknown',
+    subCategory: 'unhandled_error',
+    isRetryable: false,
+    userMessage: 'An unexpected error occurred. Please refresh the page or contact support.',
+    severity: 'high',
+  };
+};
+
+/**
+ * Get user-friendly message for payment intent status
+ * @param status Payment intent status
+ * @returns User-friendly status message
+ */
+export const getPaymentIntentStatusMessage = (status?: string): string => {
+  const statusMessages: Record<string, string> = {
+    'requires_payment_method': 'Please provide a payment method.',
+    'requires_confirmation': 'Please confirm your payment.',
+    'requires_action': 'Additional authentication required.',
+    'processing': 'Your payment is being processed...',
+    'requires_capture': 'Payment authorized. Processing order...',
+    'canceled': 'Payment was canceled.',
+    'succeeded': 'Payment successful!',
+  };
+  
+  return statusMessages[status || ''] || 'Payment status unknown. Please try again.';
+};
+
+// ====== PAYMENT METHOD DETECTION ======
+
+/**
+ * Detect available payment methods based on user agent and capabilities
+ * @returns Available payment method information
+ */
+export const detectAvailablePaymentMethods = (): {
+  applePay: boolean;
+  googlePay: boolean;
+  card: boolean;
+} => {
+  // Enhanced detection using proper browser capabilities
+  const isAppleDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+    (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 0);
+  
+  const isAndroid = /Android/.test(navigator.userAgent);
+  const isChrome = /Chrome/.test(navigator.userAgent);
+  const isEdge = /Edg/.test(navigator.userAgent);
+  const isSafari = /Safari/.test(navigator.userAgent) && !isChrome && !isEdge;
+  
+  // Apple Pay detection - more permissive approach
+  let applePaySupported = false;
+  try {
+    if (isAppleDevice && (isSafari || (window as any).PaymentRequest)) {
+      // Try to check Apple Pay availability
+      if (window.ApplePaySession) {
+        applePaySupported = window.ApplePaySession.canMakePayments?.() === true;
+      } else {
+        // Fallback: assume available on Safari on Apple devices
+        applePaySupported = isSafari;
+      }
+    }
+  } catch (e) {
+    // If Apple Pay check fails, assume it's available on Safari/Apple devices
+    applePaySupported = isAppleDevice && isSafari;
+  }
+  
+  // Google Pay detection - more permissive approach
+  let googlePaySupported = false;
+  try {
+    // Google Pay is typically available on:
+    // - Chrome on any platform
+    // - Edge on any platform  
+    // - Android browsers
+    // - But not on Apple devices (conflicting with Apple Pay)
+    googlePaySupported = (isChrome || isEdge || isAndroid) && 
+                        !!window.PaymentRequest &&
+                        !isAppleDevice;
+  } catch (e) {
+    // If check fails, fallback to basic detection
+    googlePaySupported = (isChrome || isAndroid) && !isAppleDevice;
+  }
+  
+  return {
+    applePay: applePaySupported,
+    googlePay: googlePaySupported,
+    card: true, // Always available
+  };
+};
+
+/**
+ * Check if Apple Pay is available and configured
+ * @returns Promise that resolves to Apple Pay availability
+ */
+export const checkApplePayAvailability = async (): Promise<boolean> => {
+  try {
+    // Check if Apple Pay is available on this device
+    if (!window.ApplePaySession || !window.ApplePaySession.canMakePayments) {
+      return false;
+    }
+    
+    // Check if user has cards configured
+    return window.ApplePaySession.canMakePayments();
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Check if Google Pay is available
+ * @returns Promise that resolves to Google Pay availability
+ */
+export const checkGooglePayAvailability = async (): Promise<boolean> => {
+  try {
+    // Enhanced check using Payment Request API
+    if (!window.PaymentRequest) {
+      return false;
+    }
+    
+    const isChrome = /Chrome/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    const isAppleDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+      (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 0);
+    
+    // Google Pay is typically available on Chrome/Edge and Android, but not on Apple devices
+    return (isChrome || isAndroid) && !isAppleDevice;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Enhanced payment method detection using Stripe Payment Request API
+ * This provides more accurate detection by actually testing Stripe's capabilities
+ * @param stripe Stripe instance
+ * @param amount Test amount for payment request (optional)
+ * @returns Promise with detailed payment method availability
+ */
+export const detectPaymentMethodsWithStripe = async (
+  stripe: any,
+  amount: number = 100 // Default test amount in bani
+): Promise<{
+  applePay: boolean;
+  googlePay: boolean;
+  card: boolean;
+  paymentRequest?: any;
+}> => {
+  try {
+    if (!stripe) {
+      return {
+        applePay: false,
+        googlePay: false,
+        card: true,
+      };
+    }
+
+    // Create a test payment request to check capabilities
+    const paymentRequest = stripe.paymentRequest({
+      country: 'RO',
+      currency: 'ron',
+      total: {
+        label: 'Test',
+        amount: amount,
+      },
+      requestPayerName: false,
+      requestPayerEmail: false,
+    });
+
+    // Check what payment methods are actually available
+    const canMakePayment = await paymentRequest.canMakePayment();
+    
+    if (canMakePayment) {
+      return {
+        applePay: !!canMakePayment.applePay,
+        googlePay: !!canMakePayment.googlePay,
+        card: true,
+        paymentRequest,
+      };
+    }
+
+    // Fallback to basic detection if payment request fails
+    const basicDetection = detectAvailablePaymentMethods();
+    return {
+      ...basicDetection,
+      paymentRequest: null,
+    };
+  } catch (error) {
+    console.warn('Payment method detection failed, falling back to basic detection:', error);
+    
+    // Fallback to basic detection
+    const basicDetection = detectAvailablePaymentMethods();
+    return {
+      ...basicDetection,
+      paymentRequest: null,
+    };
+  }
+};
+
+// ====== UTILITY FUNCTIONS ======
+
+/**
+ * Generate a unique idempotency key for payment operations
+ * @returns Unique idempotency key
+ */
+export const generateIdempotencyKey = (): string => {
+  return `payment_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+};
+
+/**
+ * Format amount for display in Elements
+ * @param amount Amount in smallest currency unit (bani)
+ * @returns Formatted amount
+ */
+export const formatAmountForDisplay = (amount: number): string => {
+  return (amount / 100).toFixed(2);
+};
+
+/**
+ * Validate payment form before submission
+ * @param elements Elements instance
+ * @returns Validation result
+ */
+export const validatePaymentForm = async (
+  elements: StripeElements
+): Promise<{
+  isValid: boolean;
+  errors: string[];
+}> => {
+  const errors: string[] = [];
+  
+  // Get the card element or payment element
+  const cardElement = elements.getElement('card');
+  const paymentElement = elements.getElement('payment');
+  
+  if (!cardElement && !paymentElement) {
+    errors.push('No payment method available');
+    return { isValid: false, errors };
+  }
+  
+  // Additional validation can be added here
+  // For now, rely on Stripe's built-in validation
+  
+  return { isValid: errors.length === 0, errors };
+};
+
+/**
+ * Safe error logging for client-side errors
+ * @param error Error to log
+ * @param context Additional context
+ */
+export const logClientError = (
+  error: unknown,
+  context: Record<string, unknown> = {}
+): void => {
+  const errorInfo = {
+    message: error instanceof Error ? error.message : 'Unknown error',
+    stack: error instanceof Error ? error.stack : undefined,
+    timestamp: new Date().toISOString(),
+    url: window.location.href,
+    userAgent: navigator.userAgent,
+    ...context,
+  };
+  
+  // In development, log to console
+  if (process.env.NODE_ENV === 'development') {
+    console.error('Client-side payment error:', errorInfo);
+  }
+  
+  // In production, you might want to send to error tracking service
+  // Example: Sentry, LogRocket, etc.
+};
+
+// Export the main getStripe function as default
+export default getStripe;

@@ -1,7 +1,11 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, memo, useCallback } from "react";
 import { ShoppingCart, X, Plus, Minus, Trash2 } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
+import type { CartItem } from "@/types/cart";
+import type { ID } from "@/types/common";
+import { useCartTotals, getPercentageOff } from "@/hooks/useCartTotals";
 import { formatPrice } from "@/utils/formatPrice";
 
 interface CartModalProps {
@@ -9,32 +13,128 @@ interface CartModalProps {
   onClose: () => void;
 }
 
+interface CartItemProps {
+  item: CartItem;
+  onUpdateQuantity: (id: ID, quantity: number) => void;
+  onRemove: (id: ID) => void;
+}
+
+// Memoized cart item component for optimal performance
+// Re-renders only when item properties or callbacks change
+const CartItemRow = memo<CartItemProps>(({ item, onUpdateQuantity, onRemove }) => {
+  // Memoize expensive price calculations to prevent recalculation on every render
+  const priceDetails = useMemo(() => {
+    const hasDiscount = item.price.discount && item.price.discount < item.price.original;
+    const discountedPrice = item.price.discount ?? item.price.original;
+    const percentOff = hasDiscount ? getPercentageOff(item.price.original, item.price.discount!) : 0;
+    
+    return { hasDiscount, discountedPrice, percentOff };
+  }, [item.price.discount, item.price.original]);
+
+  // Memoize event handlers to prevent child re-renders
+  const handleIncrement = useCallback(() => {
+    onUpdateQuantity(item.id, item.quantity + 1);
+  }, [item.id, item.quantity, onUpdateQuantity]);
+
+  const handleDecrement = useCallback(() => {
+    if (item.quantity > 1) {
+      onUpdateQuantity(item.id, item.quantity - 1);
+    }
+  }, [item.id, item.quantity, onUpdateQuantity]);
+
+  const handleRemove = useCallback(() => {
+    onRemove(item.id);
+  }, [item.id, onRemove]);
+
+  const { hasDiscount, discountedPrice, percentOff } = priceDetails;
+
+  return (
+    <div className="flex items-center gap-3 py-3 border-b border-gray-200 last:border-b-0">
+      {/* Product Image */}
+      <div className="flex-shrink-0">
+        <Image 
+          src={item.image} 
+          alt={item.name}
+          width={64}
+          height={64}
+          className="object-cover rounded-md"
+          sizes="64px"
+          priority={false}
+        />
+      </div>
+      
+      {/* Product Details */}
+      <div className="flex-1 min-w-0">
+        <h3 className="text-[#7C4D59] font-medium text-sm truncate">
+          {item.name}
+        </h3>
+        
+        {/* Enhanced Price Display */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[#7C4D59] text-sm font-semibold">
+            ${formatPrice(discountedPrice)}
+          </span>
+          {hasDiscount && (
+            <>
+              <span className="text-gray-500 text-xs line-through">
+                ${formatPrice(item.price.original)}
+              </span>
+              <span className="bg-neutral-100 text-[#7C4D59] text-xs px-2 py-0.5 rounded-md font-medium">
+                {percentOff}% OFF
+              </span>
+            </>
+          )}
+        </div>
+        
+        {/* Quantity Controls */}
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            onClick={handleDecrement}
+            className="w-6 h-6 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full text-[#7C4D59] transition-colors"
+            aria-label="Decrease quantity"
+          >
+            <Minus size={12} />
+          </button>
+          
+          <span className="text-[#7C4D59] font-medium text-sm min-w-[20px] text-center">
+            {item.quantity}
+          </span>
+          
+          <button
+            onClick={handleIncrement}
+            className="w-6 h-6 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full text-[#7C4D59] transition-colors"
+            aria-label="Increase quantity"
+          >
+            <Plus size={12} />
+          </button>
+          
+          <button
+            onClick={handleRemove}
+            className="ml-2 w-6 h-6 flex items-center justify-center bg-red-100 hover:bg-red-200 rounded-full text-red-600 transition-colors"
+            aria-label="Remove item"
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
+      </div>
+      
+      {/* Item Total */}
+      <div className="text-right">
+        <p className="text-[#7C4D59] font-semibold text-sm">
+          ${formatPrice(discountedPrice * item.quantity)}
+        </p>
+      </div>
+    </div>
+  );
+});
+
+// Add display name for debugging
+CartItemRow.displayName = 'CartItemRow';
+
 const CartModal = ({ open, onClose }: CartModalProps) => {
   const router = useRouter();
-  // Connect to CartContext to access cart items and totals
-  const { cartItems, cartCount, totalPrice, updateItemQuantity, removeFromCart } = useCart();
-
-  // Calculate comprehensive totals with memoization
-  const totals = useMemo(() => {
-    return cartItems.reduce((acc, item) => {
-      const original = item.price.original;
-      const discount = item.price.discount ?? original;
-      const qty = item.quantity;
-      
-      acc.original += original * qty;
-      acc.discounted += discount * qty;
-      
-      return acc;
-    }, { original: 0, discounted: 0 });
-  }, [cartItems]);
-
-  const savings = totals.original - totals.discounted;
-
-  // Helper function to calculate percentage off
-  const getPercentageOff = (original: number, discount: number) => {
-    if (original <= 0) return 0;
-    return Math.round((1 - discount / original) * 100);
-  };
+  const { cartItems, cartCount, updateItemQuantity, removeFromCart } = useCart();
+  const { original: originalTotal, discounted: discountedTotal, savings } = useCartTotals();
 
   if (!open) return null;
 
@@ -70,86 +170,14 @@ const CartModal = ({ open, onClose }: CartModalProps) => {
           <div className="mb-6">
             {/* Cart items list */}
             <div className="max-h-64 overflow-y-auto mb-4">
-              {cartItems.map((item) => {
-                const hasDiscount = item.price.discount && item.price.discount < item.price.original;
-                const discountedPrice = item.price.discount ?? item.price.original;
-                const percentOff = hasDiscount ? getPercentageOff(item.price.original, item.price.discount!) : 0;
-                
-                return (
-                  <div key={item.id} className="flex items-center gap-3 py-3 border-b border-gray-200 last:border-b-0">
-                    {/* Product Image */}
-                    <div className="flex-shrink-0">
-                      <img 
-                        src={item.image} 
-                        alt={item.name}
-                        className="w-16 h-16 object-cover rounded-md"
-                      />
-                    </div>
-                    
-                    {/* Product Details */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-[#7C4D59] font-medium text-sm truncate">
-                        {item.name}
-                      </h3>
-                      
-                      {/* Enhanced Price Display */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[#7C4D59] text-sm font-semibold">
-                          ${formatPrice(discountedPrice)}
-                        </span>
-                        {hasDiscount && (
-                          <>
-                            <span className="text-gray-500 text-xs line-through">
-                              ${formatPrice(item.price.original)}
-                            </span>
-                            <span className="bg-neutral-100 text-[#7C4D59] text-xs px-2 py-0.5 rounded-md font-medium">
-                              {percentOff}% OFF
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      
-                      {/* Quantity Controls */}
-                      <div className="flex items-center gap-2 mt-2">
-                        <button
-                          onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
-                          className="w-6 h-6 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full text-[#7C4D59] transition-colors"
-                          aria-label="Decrease quantity"
-                        >
-                          <Minus size={12} />
-                        </button>
-                        
-                        <span className="text-[#7C4D59] font-medium text-sm min-w-[20px] text-center">
-                          {item.quantity}
-                        </span>
-                        
-                        <button
-                          onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
-                          className="w-6 h-6 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full text-[#7C4D59] transition-colors"
-                          aria-label="Increase quantity"
-                        >
-                          <Plus size={12} />
-                        </button>
-                        
-                        <button
-                          onClick={() => removeFromCart(item.id)}
-                          className="ml-2 w-6 h-6 flex items-center justify-center bg-red-100 hover:bg-red-200 rounded-full text-red-600 transition-colors"
-                          aria-label="Remove item"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* Item Total */}
-                    <div className="text-right">
-                      <p className="text-[#7C4D59] font-semibold text-sm">
-                        ${formatPrice(discountedPrice * item.quantity)}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+              {cartItems.map((item) => (
+                <CartItemRow
+                  key={item.id}
+                  item={item}
+                  onUpdateQuantity={updateItemQuantity}
+                  onRemove={removeFromCart}
+                />
+              ))}
             </div>
             
             {/* Enhanced Cart Total Section */}
@@ -157,7 +185,7 @@ const CartModal = ({ open, onClose }: CartModalProps) => {
               {/* Subtotal (original prices) */}
               <div className="flex justify-between items-center text-sm text-gray-600 mb-2">
                 <span>Subtotal ({cartCount} items):</span>
-                <span>${formatPrice(totals.original)}</span>
+                <span>${formatPrice(originalTotal)}</span>
               </div>
               
               {/* Discount Savings */}
@@ -172,7 +200,7 @@ const CartModal = ({ open, onClose }: CartModalProps) => {
               <div className="flex justify-between items-center border-t border-gray-200 pt-2">
                 <span className="text-[#7C4D59] font-bold text-lg">Total:</span>
                 <span className="text-[#7C4D59] font-bold text-xl">
-                  ${formatPrice(totals.discounted)}
+                  ${formatPrice(discountedTotal)}
                 </span>
               </div>
             </div>

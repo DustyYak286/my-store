@@ -31,10 +31,33 @@ export default [
         version: 'detect',
       },
     },
-    plugins: {},        // add object map if you have custom rules later
+    plugins: {
+      custom: {
+        rules: {
+          'no-console-unicode': {
+            create(context) {
+              return {
+                CallExpression(node) {
+                  if (node.callee.type === 'MemberExpression' && 
+                      node.callee.object.name === 'console' && 
+                      node.arguments.length > 0) {
+                    node.arguments.forEach(arg => {
+                      if (arg.type === 'Literal' && typeof arg.value === 'string' && /[^\x20-\x7E]/.test(arg.value)) {
+                        context.report({ node: arg, message: 'Console statements should use ASCII characters only. Use [DEBUG], [REDIRECT], etc. instead of Unicode.' });
+                      }
+                    });
+                  }
+                }
+              };
+            }
+          }
+        }
+      }
+    },
     rules:   {
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',
+      'custom/no-console-unicode': 'error',
     },        // your overrides here
   },
 ];

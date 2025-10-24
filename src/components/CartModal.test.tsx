@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import CartModal from './CartModal';
+import type { CartItem } from '@/types/cart';
 
 // Mock the useRouter hook from Next.js
 const mockPush = jest.fn();
@@ -12,7 +13,7 @@ jest.mock('next/navigation', () => ({
 
 // Mock the useCart hook directly
 const mockCartContext = {
-  cartItems: [],
+  cartItems: [] as CartItem[],
   cartCount: 0,
   totalPrice: 0,
   addToCart: jest.fn(),
@@ -128,12 +129,12 @@ describe('CartModal', () => {
       expect(screen.getByText('Test Product 2')).toBeInTheDocument();
       expect(screen.getAllByText('$15.50')).toHaveLength(2); // unit price and total price
       
-      // Check images
+      // Check images - Next.js Image component creates optimized URLs with encoding
       const images = screen.getAllByRole('img');
       expect(images).toHaveLength(2);
-      expect(images[0]).toHaveAttribute('src', '/test-image-1.jpg');
+      expect(images[0].getAttribute('src')).toContain('%2Ftest-image-1.jpg');
       expect(images[0]).toHaveAttribute('alt', 'Test Product 1');
-      expect(images[1]).toHaveAttribute('src', '/test-image-2.jpg');
+      expect(images[1].getAttribute('src')).toContain('%2Ftest-image-2.jpg');
       expect(images[1]).toHaveAttribute('alt', 'Test Product 2');
     });
 

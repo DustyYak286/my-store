@@ -1,13 +1,6 @@
 "use client";
 import React, { useEffect } from "react";
-
-interface ToastProps {
-  message: string;
-  isVisible: boolean;
-  onClose: () => void;
-  duration?: number;
-  type?: "success" | "error" | "info";
-}
+import type { ToastProps } from "@/types/ui";
 
 const Toast: React.FC<ToastProps> = ({
   message,
