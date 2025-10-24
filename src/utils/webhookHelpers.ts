@@ -33,7 +33,7 @@ export function clearWebhookHelpersCleanup(): void {
     clearInterval(helpersCleanupInterval);
     helpersCleanupInterval = null;
   }
-  processedEventIds.clear();
+  processedEvents.clear();
 }
 
 export function isEventFresh(eventCreatedSeconds: number, maxAgeMs: number): boolean {
